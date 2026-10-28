@@ -1,0 +1,4 @@
+#!/bin/sh
+IDX=/usr/local/CyberCP/baseTemplate/templates/baseTemplate/index.html
+[ -f "$IDX" ] && sed -i "/{% url 'wordpressToolkitPro' %}\" class=\"menu-item\"/,/<\/a>/d" "$IDX"
+echo "WordPress Toolkit Pro removed (WordPress sites are not touched)."

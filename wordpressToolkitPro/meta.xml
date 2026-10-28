@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cyberpanelPluginConfig>
+    <name>wordpressToolkitPro</name>
+    <type>plugin</type>
+    <description>WordPress Toolkit Pro - WordPress manager: site list, login, updates, backups, SSL, language, uninstall and installer</description>
+    <version>3.4.0</version>
+</cyberpanelPluginConfig>

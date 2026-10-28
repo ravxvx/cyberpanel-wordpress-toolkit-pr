@@ -1,0 +1,22 @@
+name: Release zip
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check syntax
+        run: |
+          python3 -m py_compile wordpressToolkitPro/views.py wordpressToolkitPro/urls.py
+          for f in wordpressToolkitPro/*.sh wordpressToolkitPro/pre_install wordpressToolkitPro/post_install wordpressToolkitPro/pre_remove; do sh -n "$f" 2>/dev/null || bash -n "$f"; done
+      - name: Build zip
+        run: sh scripts/build-zip.sh
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/wordpressToolkitPro.zip
+          generate_release_notes: true

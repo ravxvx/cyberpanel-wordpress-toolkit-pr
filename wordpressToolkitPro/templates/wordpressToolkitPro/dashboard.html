@@ -1,0 +1,384 @@
+{% extends "baseTemplate/index.html" %}
+{% block title %}WordPress Toolkit Pro - CyberPanel{% endblock %}
+{% block content %}
+<style>
+#wptoolkit{--bg:#fff;--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--soft:#f3f4f6;--accent:#ea580c;--accent2:#c2410c;
+  --ok:#166534;--okbg:#dcfce7;--warn:#92400e;--warnbg:#fef3c7;--bad:#991b1b;--badbg:#fee2e2;--info:#1e40af;--infobg:#dbeafe;
+  font-size:14px;padding-bottom:40px}
+#wptoolkit *{box-sizing:border-box}
+#wptoolkit .wpt-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 18px}
+#wptoolkit .wpt-head h2{margin:0;font-weight:700}
+#wptoolkit .wpt-head p{margin:4px 0 0;opacity:.75}
+#wptoolkit .wpt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+#wptoolkit .wpt-stat{background:var(--bg);border-radius:12px;padding:14px 18px;box-shadow:0 1px 3px rgba(0,0,0,.15);border-left:4px solid var(--accent)}
+#wptoolkit .wpt-stat b{display:block;font-size:26px;line-height:1.1;color:var(--fg)}
+#wptoolkit .wpt-stat span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+#wptoolkit .wpt-card{background:var(--bg);color:var(--fg);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.15);margin-bottom:18px;overflow:hidden}
+#wptoolkit .wpt-card>.wpt-title,#wptoolkit details.wpt-card>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);font-size:16px;font-weight:600;color:var(--fg);margin:0;list-style:none;cursor:default}
+#wptoolkit details.wpt-card>summary{cursor:pointer;border-bottom:0}
+#wptoolkit details.wpt-card[open]>summary{border-bottom:1px solid var(--line)}
+#wptoolkit details.wpt-card>summary::-webkit-details-marker{display:none}
+#wptoolkit details.wpt-card>summary:after{content:"▾";color:var(--muted)}
+#wptoolkit details.wpt-card[open]>summary:after{content:"▴"}
+#wptoolkit .wpt-body{padding:18px 20px}
+#wptoolkit .wpt-scroll{overflow-x:auto}
+#wptoolkit table.wpt-table{width:100%;border-collapse:collapse;background:transparent;margin:0}
+#wptoolkit .wpt-table th{background:var(--soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;text-align:left;padding:10px 14px;border:0;white-space:nowrap}
+#wptoolkit .wpt-table td{padding:14px;border:0;border-top:1px solid var(--line);vertical-align:middle;color:var(--fg);background:transparent}
+#wptoolkit .wpt-table tr:hover td{background:#fafafa}
+#wptoolkit .wpt-table a.wpt-domain{font-weight:600;color:var(--fg);text-decoration:none;border-bottom:1px dotted var(--muted)}
+#wptoolkit .wpt-table a.wpt-domain:hover{color:var(--accent2)}
+#wptoolkit .wpt-sub{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+#wptoolkit .wpt-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;margin:1px 4px 1px 0;white-space:nowrap}
+#wptoolkit .b-ok{background:var(--okbg);color:var(--ok)} #wptoolkit .b-warn{background:var(--warnbg);color:var(--warn)}
+#wptoolkit .b-bad{background:var(--badbg);color:var(--bad)} #wptoolkit .b-info{background:var(--infobg);color:var(--info)}
+#wptoolkit .b-gray{background:var(--soft);color:var(--muted)}
+#wptoolkit .wpt-actions{display:flex;flex-wrap:wrap;gap:6px}
+#wptoolkit .wpt-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;line-height:1.2;transition:all .12s}
+#wptoolkit .wpt-btn:hover{border-color:var(--accent);color:var(--accent2)}
+#wptoolkit .wpt-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#wptoolkit .wpt-btn.primary:hover{background:var(--accent2);border-color:var(--accent2);color:#fff}
+#wptoolkit .wpt-btn.warn{background:var(--warnbg);border-color:#fcd34d;color:var(--warn)}
+#wptoolkit .wpt-btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
+#wptoolkit .wpt-btn.danger{color:#b91c1c;border-color:#fecaca}
+#wptoolkit .wpt-btn.danger:hover{border-color:#dc2626;color:#991b1b;background:#fef2f2}
+#wptoolkit .wpt-btn.danger.solid{background:#dc2626;border-color:#dc2626;color:#fff}
+#wptoolkit .wpt-btn.danger.solid:hover{background:#b91c1c;color:#fff}
+#wptoolkit .wpt-modal{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
+#wptoolkit .wpt-modal-box{background:#fff;color:var(--fg);border-radius:14px;max-width:460px;width:100%;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+#wptoolkit .wpt-modal-box h3{margin:0 0 12px;font-size:18px;font-weight:700;color:var(--fg)}
+#wptoolkit .wpt-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+#wptoolkit .wpt-modal-note{color:var(--bad);font-size:13px;margin-top:8px;min-height:18px}
+#wptoolkit .wpt-btn[disabled]{opacity:.5;cursor:not-allowed}
+#wptoolkit .wpt-status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-weight:500}
+#wptoolkit .wpt-status:empty{display:none}
+#wptoolkit .s-ok{background:var(--okbg);color:var(--ok)} #wptoolkit .s-bad{background:var(--badbg);color:var(--bad)}
+#wptoolkit .s-info{background:var(--infobg);color:var(--info)} #wptoolkit .s-warn{background:var(--warnbg);color:var(--warn)}
+#wptoolkit .wpt-spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:wptspin .7s linear infinite;flex:none}
+@keyframes wptspin{to{transform:rotate(360deg)}}
+#wptoolkit pre.wpt-log{margin:0;max-height:340px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:0}
+#wptoolkit .wpt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px 18px}
+#wptoolkit .wpt-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+#wptoolkit .wpt-input{width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:var(--fg);font-size:14px;height:auto;box-shadow:none}
+#wptoolkit .wpt-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(234,88,12,.15)}
+#wptoolkit .wpt-check{display:flex;align-items:center;gap:8px;margin-top:6px;color:var(--fg)}
+#wptoolkit .wpt-muted{color:var(--muted)}
+#wptoolkit .wpt-empty{padding:26px;text-align:center;color:var(--muted)}
+#wptoolkit .wpt-loginbox{margin-top:14px}
+</style>
+
+<div class="container" id="wptoolkit">
+  {% csrf_token %}
+  <div class="wpt-head">
+    <div>
+      <h2>WordPress Toolkit Pro</h2>
+      <p>Site list, one-click login, updates, backups, SSL, language switch and installer.</p>
+    </div>
+    <button type="button" id="wptRefresh" class="wpt-btn"><i class="fas fa-arrows-rotate"></i> Refresh list</button>
+  </div>
+
+  <div class="wpt-stats">
+    <div class="wpt-stat"><b id="stSites">–</b><span>WordPress sites</span></div>
+    <div class="wpt-stat"><b id="stUpd">–</b><span>Updates available</span></div>
+    <div class="wpt-stat"><b id="stSsl">–</b><span>Without SSL</span></div>
+  </div>
+
+  <div class="wpt-card">
+    <div class="wpt-title">Your sites</div>
+    <div class="wpt-scroll">
+      <table class="wpt-table" id="wptTable">
+        <thead><tr><th>Site</th><th>WordPress</th><th>PHP</th><th>SSL</th><th>Updates</th><th>Actions</th></tr></thead>
+        <tbody><tr><td colspan="6" class="wpt-empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="wpt-body" id="wptLoginBox" style="display:none"></div>
+  </div>
+
+  <div class="wpt-card">
+    <div class="wpt-title">Restore from backup</div>
+    <div class="wpt-body">
+      <p class="wpt-muted" style="margin-top:0">Pick a website to see its backups. This also works for sites where WordPress was removed with "Remove WP".</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select class="wpt-input" id="wptRestoreDomain" style="max-width:320px">
+          {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}
+        </select>
+        <button type="button" class="wpt-btn" id="wptShowBackups"><i class="fas fa-clock-rotate-left"></i> Show backups</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wpt-card" id="wptBackupsPanel" style="display:none">
+    <div class="wpt-title">Backups: <span id="wptBackupsDomain" class="wpt-muted"></span></div>
+    <div class="wpt-scroll">
+      <table class="wpt-table" id="wptBackupsTable"><thead><tr><th>File</th><th>Size</th><th>Date</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="wpt-body wpt-muted" style="padding-top:0">Backups are stored on the server in <code>/home/wptoolkit-backups/DOMAIN/</code> (the 7 newest per site). An extra safety backup is made before updates, SSL switch and restore.</div>
+  </div>
+
+  <div class="wpt-card">
+    <div class="wpt-title">Operation log</div>
+    <div class="wpt-body">
+      <div id="wptResult" class="wpt-status"></div>
+      <pre id="wptLog" class="wpt-log">No operation running.</pre>
+    </div>
+  </div>
+
+  <div class="wpt-modal" id="wptModal">
+    <div class="wpt-modal-box">
+      <h3 id="wptModalTitle"></h3>
+      <div id="wptModalBody"></div>
+      <div class="wpt-modal-actions">
+        <button type="button" class="wpt-btn" id="wptModalCancel">Cancel</button>
+        <button type="button" class="wpt-btn primary" id="wptModalOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <details class="wpt-card" id="wptInstallCard">
+    <summary>Install a new WordPress</summary>
+    <div class="wpt-body">
+      <p class="wpt-muted" style="margin-top:0">The website must already exist in CyberPanel and have an empty <code>public_html</code>.</p>
+      <form id="wptForm" autocomplete="off">
+        <div class="wpt-grid">
+          <div class="wpt-field"><label>Website</label><select class="wpt-input" name="domain" required>
+            {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}
+          </select></div>
+          <div class="wpt-field"><label>Site title</label><input class="wpt-input" name="title" placeholder="My site"></div>
+          <div class="wpt-field"><label>Admin login</label><input class="wpt-input" name="login" required pattern="[A-Za-z0-9_.\-]{3,40}" placeholder="not 'admin'"></div>
+          <div class="wpt-field"><label>Admin e-mail</label><input class="wpt-input" type="email" name="email" required></div>
+          <div class="wpt-field"><label>Language</label><select class="wpt-input" name="locale">
+            <option value="en_US">English (US)</option><option value="en_GB">English (UK)</option>
+            <option value="pl_PL">Polski</option><option value="de_DE">Deutsch</option>
+            <option value="fr_FR">Français</option><option value="es_ES">Español</option></select></div>
+          <div class="wpt-field"><label>URL scheme</label><select class="wpt-input" name="scheme">
+            <option value="auto">Auto (https only with a real certificate)</option>
+            <option value="http">http</option><option value="https">https</option></select></div>
+        </div>
+        <label class="wpt-check"><input type="checkbox" name="litespeed" value="1" checked> Install the LiteSpeed Cache plugin</label>
+        <div style="margin-top:16px"><button type="submit" class="wpt-btn primary"><i class="fas fa-download"></i> Install WordPress</button></div>
+      </form>
+    </div>
+  </details>
+</div>
+{{ meta|json_script:"wptMeta" }}
+<script>
+(function () {
+  var URLS = {
+    deploy: "{% url 'wordpressToolkitProDeploy' %}", status: "{% url 'wordpressToolkitProStatus' %}",
+    job: "{% url 'wordpressToolkitProJob' %}", jobstatus: "{% url 'wordpressToolkitProJobStatus' %}"
+  };
+  var META = {}; try { META = JSON.parse(document.getElementById('wptMeta').textContent) || {}; } catch (e) {}
+  var csrf = document.querySelector('#wptoolkit [name=csrfmiddlewaretoken]').value;
+  var logEl = document.getElementById('wptLog'), resEl = document.getElementById('wptResult');
+  var busy = false;
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text != null) { e.textContent = text; } return e; }
+  function post(url, data) {
+    var fd = new FormData(); fd.append('csrfmiddlewaretoken', csrf);
+    Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+    return fetch(url, {method: 'POST', body: fd, credentials: 'same-origin',
+      headers: {'X-Requested-With': 'XMLHttpRequest'}}).then(function (r) { return r.json(); });
+  }
+  function setBusy(b) { busy = b; document.querySelectorAll('#wptoolkit button').forEach(function (x) { x.disabled = b; }); }
+  function msg(type, text) {
+    resEl.className = 'wpt-status s-' + type; resEl.innerHTML = '';
+    if (type === 'info') { resEl.appendChild(el('span', 'wpt-spin')); }
+    resEl.appendChild(el('span', '', text));
+  }
+  function show(text) { logEl.textContent = text; logEl.scrollTop = logEl.scrollHeight; }
+  function btn(label, icon, cls, fn) {
+    var b = el('button', 'wpt-btn ' + cls); b.type = 'button';
+    var i = el('i', 'fas ' + icon); b.appendChild(i); b.appendChild(document.createTextNode(' ' + label));
+    b.addEventListener('click', fn); return b;
+  }
+  function td(tr, child) { var c = document.createElement('td'); if (typeof child === 'string') { c.textContent = child; } else if (child) { c.appendChild(child); } tr.appendChild(c); return c; }
+  function badge(cls, text) { return el('span', 'wpt-badge b-' + cls, text); }
+
+  function runJob(action, domain, extra, quiet) {
+    return post(URLS.job, {action: action, domain: domain || '', extra: extra || ''}).then(function (d) {
+      if (!d.ok) { throw new Error(d.error || 'Error'); }
+      return new Promise(function (resolve, reject) {
+        var tries = 0;
+        (function poll() {
+          post(URLS.jobstatus, {action: action, domain: domain || '', nonce: d.nonce}).then(function (s) {
+            if (!s.ok) { reject(new Error(s.error || 'Status error')); return; }
+            if (s.started && !quiet) { show(s.log.replace(/^LOGINURL\|.*$/mg, '(login link below)')); }
+            if (s.done) { resolve({success: s.success, log: s.log}); return; }
+            if (++tries > 400) { reject(new Error('Timed out. Check /var/log/wptoolkit/ on the server.')); return; }
+            setTimeout(poll, 1500);
+          }).catch(reject);
+        })();
+      });
+    });
+  }
+
+  function renderSites(log) {
+    var tb = document.querySelector('#wptTable tbody'); tb.innerHTML = '';
+    var n = 0, updTotal = 0, noSsl = 0;
+    log.split('\n').forEach(function (line) {
+      if (line.indexOf('SITE|') !== 0) { return; }
+      var p = line.split('|'); var dom = p[1]; n++;
+      var tr = document.createElement('tr');
+      var c = td(tr, '');
+      if (/^https?:\/\//.test(p[6] || '')) {
+        var a = el('a', 'wpt-domain', dom); a.href = p[6]; a.target = '_blank'; a.rel = 'noopener'; c.appendChild(a);
+        c.appendChild(el('span', 'wpt-sub', p[6]));
+      } else { c.appendChild(el('span', '', dom)); }
+      var wc = td(tr, ''); wc.appendChild(badge('gray', p[2])); wc.appendChild(badge('info', p[7] || 'en_US'));
+      var m = META[dom] || {};
+      td(tr, badge('info', m.php || '?'));
+      if (m.ssl) { td(tr, badge('ok', 'SSL')); } else { noSsl++; td(tr, badge('bad', 'no SSL')); }
+      var uc = td(tr, '');
+      var parts = [['Core', p[3]], ['Plugins', p[4]], ['Themes', p[5]]], any = false;
+      parts.forEach(function (x) {
+        if (x[1] === '?') { uc.appendChild(badge('gray', x[0] + ' ?')); any = true; }
+        else if (parseInt(x[1], 10) > 0) { uc.appendChild(badge('warn', x[0] + ' ' + x[1])); updTotal += parseInt(x[1], 10); any = true; }
+      });
+      if (!any) { uc.appendChild(badge('ok', 'Up to date')); }
+      var act = el('div', 'wpt-actions');
+      act.appendChild(btn('Log in', 'fa-right-to-bracket', 'primary', function () { loginSite(dom); }));
+      act.appendChild(btn('Update', 'fa-arrows-rotate', '', function () { simple('update', dom, 'Update core, plugins and themes on ' + dom + '? A backup is made first.'); }));
+      act.appendChild(btn('Backup', 'fa-floppy-disk', '', function () { simple('backup', dom); }));
+      act.appendChild(btn('Backups', 'fa-clock-rotate-left', '', function () { showBackups(dom); }));
+      act.appendChild(btn('Switch to https', 'fa-lock', '', function () { simple('ssl', dom, 'Switch ' + dom + ' addresses to https? Requires a real certificate issued in CyberPanel. A backup is made first.'); }));
+      act.appendChild(btn('Language', 'fa-language', '', function () { languageDialog(dom, p[7] || 'en_US'); }));
+      act.appendChild(btn('Remove WP', 'fa-trash', 'danger', function () { uninstallDialog(dom); }));
+      td(tr, act); tb.appendChild(tr);
+    });
+    if (!n) { tb.innerHTML = '<tr><td colspan="6" class="wpt-empty">No WordPress installation found.</td></tr>'; }
+    document.getElementById('stSites').textContent = n;
+    document.getElementById('stUpd').textContent = updTotal;
+    document.getElementById('stSsl').textContent = noSsl;
+  }
+
+  function loadList() {
+    if (busy) { return Promise.resolve(); }
+    setBusy(true); msg('info', 'Scanning sites...');
+    return runJob('list', '', '', true).then(function (r) {
+      renderSites(r.log); msg('ok', 'List refreshed.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+  }
+
+  function simple(action, dom, confirmText, extra) {
+    if (busy) { return; }
+    if (confirmText && !window.confirm(confirmText)) { return; }
+    var names = {update: 'Update', backup: 'Backup', ssl: 'Switch to https', language: 'Language change', uninstall: 'WordPress removal'};
+    setBusy(true); show('Start...'); msg('info', (names[action] || action) + ': ' + dom + '...');
+    runJob(action, dom, extra).then(function (r) {
+      msg(r.success ? 'ok' : 'bad', r.success ? (names[action] || action) + ' finished: ' + dom : 'Operation failed - see the log below.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () {
+      setBusy(false); if (action !== 'backup') { loadList(); }
+    });
+  }
+
+  function openModal(title, body, label, danger, onOk) {
+    var m = document.getElementById('wptModal');
+    document.getElementById('wptModalTitle').textContent = title;
+    var b = document.getElementById('wptModalBody'); b.innerHTML = ''; b.appendChild(body);
+    var ok = document.getElementById('wptModalOk'); ok.textContent = label; ok.className = 'wpt-btn ' + (danger ? 'danger solid' : 'primary');
+    ok.onclick = function () { if (onOk() !== false) { m.style.display = 'none'; } };
+    document.getElementById('wptModalCancel').onclick = function () { m.style.display = 'none'; };
+    m.style.display = 'flex';
+  }
+  var LANGS = [['en_US', 'English (US)'], ['en_GB', 'English (UK)'], ['ga', 'Gaeilge (Irish)'], ['pl_PL', 'Polski'],
+               ['de_DE', 'Deutsch'], ['fr_FR', 'Français'], ['es_ES', 'Español']];
+  function languageDialog(dom, current) {
+    if (busy) { return; }
+    var box = el('div'); box.appendChild(el('p', '', 'Change the WordPress language on ' + dom + '? Translations for core, plugins and themes will be downloaded, and per-user languages reset to the site default.'));
+    var sel = el('select', 'wpt-input');
+    LANGS.forEach(function (l) { var o = el('option', '', l[1] + (l[0] === current ? ' (current)' : '')); o.value = l[0]; sel.appendChild(o); });
+    sel.value = (current !== 'en_US') ? 'en_US' : current;
+    box.appendChild(sel);
+    openModal('Change language: ' + dom, box, 'Change language', false, function () { simple('language', dom, null, sel.value); });
+  }
+  function uninstallDialog(dom) {
+    if (busy) { return; }
+    var box = el('div');
+    box.appendChild(el('p', '', 'This removes WordPress from ' + dom + ': all files in public_html plus the database and its user. The website itself stays in CyberPanel (empty).'));
+    box.appendChild(el('p', 'wpt-muted', 'A backup is made first and can be restored later from the Backups list. To confirm, type the domain name:'));
+    var inp = el('input', 'wpt-input'); inp.placeholder = dom; inp.autocomplete = 'off'; box.appendChild(inp);
+    var note = el('div', 'wpt-modal-note'); box.appendChild(note);
+    openModal('Remove WordPress: ' + dom, box, 'Remove WordPress', true, function () {
+      if (inp.value.trim().toLowerCase() !== dom) { note.textContent = 'The name does not match the domain.'; return false; }
+      simple('uninstall', dom, null, dom);
+    });
+  }
+
+  function loginSite(dom) {
+    if (busy) { return; }
+    setBusy(true); show('Start...'); msg('info', 'Generating login link for ' + dom + '...');
+    runJob('login', dom, '', true).then(function (r) {
+      var m = r.log.match(/^LOGINURL\|(https?:\/\/\S+)$/m);
+      var box = document.getElementById('wptLoginBox'); box.innerHTML = '';
+      if (r.success && m) {
+        var a = el('a', 'wpt-btn ok', ''); a.href = m[1]; a.target = '_blank'; a.rel = 'noopener';
+        a.appendChild(el('i', 'fas fa-arrow-up-right-from-square')); a.appendChild(document.createTextNode(' Open wp-admin: ' + dom));
+        box.appendChild(a); box.appendChild(el('span', 'wpt-muted', '  The link works once and is valid for 2 minutes.'));
+        box.style.display = 'block'; show('Link gotowy.'); msg('ok', 'Ready - click the green button below the table.');
+      } else { box.style.display = 'none'; show(r.log); msg('bad', 'Could not generate the link - see the log.'); }
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+  }
+
+  function showBackups(dom) {
+    if (busy) { return; }
+    setBusy(true); msg('info', 'Loading backups: ' + dom + '...');
+    runJob('backups', dom, '', true).then(function (r) {
+      var tb = document.querySelector('#wptBackupsTable tbody'); tb.innerHTML = '';
+      document.getElementById('wptBackupsDomain').textContent = dom;
+      var n = 0;
+      r.log.split('\n').forEach(function (line) {
+        if (line.indexOf('BACKUP|') !== 0) { return; }
+        var p = line.split('|'); n++;
+        var tr = document.createElement('tr');
+        td(tr, p[1]); td(tr, (parseInt(p[2], 10) / 1048576).toFixed(1) + ' MB'); td(tr, p[3]);
+        td(tr, btn('Restore', 'fa-rotate-left', 'warn', function () {
+          if (window.confirm('RESTORE ' + dom + ' from backup ' + p[1] + '?\nCurrent files and database will be replaced (a safety backup is made first).')) { restore(dom, p[1]); }
+        }));
+        tb.appendChild(tr);
+      });
+      if (!n) { tb.innerHTML = '<tr><td colspan="4" class="wpt-empty">No backups yet - click "Backup".</td></tr>'; }
+      document.getElementById('wptBackupsPanel').style.display = 'block';
+      msg('ok', 'Backup list ready.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+  }
+
+  function restore(dom, file) {
+    if (busy) { return; }
+    setBusy(true); show('Start...'); msg('info', 'Restoring ' + dom + '...');
+    runJob('restore', dom, file).then(function (r) {
+      msg(r.success ? 'ok' : 'bad', r.success ? 'Site restored: ' + dom : 'Restore failed - see the log below.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); loadList(); });
+  }
+
+  var f = document.getElementById('wptForm');
+  f.addEventListener('submit', function (e) {
+    e.preventDefault(); if (busy) { return; }
+    setBusy(true); show('Start...'); msg('info', 'Installing (about a minute)...');
+    var fd = new FormData(f), data = {};
+    fd.forEach(function (v, k) { data[k] = v; });
+    var domain = data.domain;
+    post(URLS.deploy, data).then(function (d) {
+      if (!d.ok) { throw new Error(d.error); }
+      var tries = 0;
+      (function poll() {
+        post(URLS.status, {domain: domain}).then(function (s) {
+          if (!s.ok) { throw new Error(s.error); }
+          show(s.log);
+          if (s.done) {
+            msg(s.success ? 'ok' : 'bad', s.success ? 'WordPress installed - copy the login details from the log (also saved in /root/wp-' + domain + '.txt).' : 'Installation failed - see the log below.');
+            setBusy(false); if (s.success) { loadList(); }
+          } else if (++tries > 200) { msg('warn', 'Still running - check /var/log/wptoolkit/' + domain + '.log'); setBusy(false); }
+          else { setTimeout(poll, 2000); }
+        }).catch(function (err) { msg('bad', err.message); setBusy(false); });
+      })();
+    }).catch(function (err) { msg('bad', err.message); setBusy(false); });
+  });
+
+  document.getElementById('wptRefresh').addEventListener('click', loadList);
+  document.getElementById('wptShowBackups').addEventListener('click', function () {
+    var d = document.getElementById('wptRestoreDomain').value; if (d) { showBackups(d); }
+  });
+  loadList();
+})();
+</script>
+{% endblock %}
