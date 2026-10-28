@@ -76,7 +76,7 @@ This removes the plugin, its registration and the sidebar link. It does **not** 
 
 ## 4. If the menu link is missing
 
-Some CyberPanel versions do not contain the marker the installer uses, and upgrades overwrite the template. Re-add the link with:
+Some CyberPanel versions do not contain the marker the installer uses, and upgrades overwrite the template. Re-add the link (this also replaces an older link with the safe form):
 
 ```bash
 sh /usr/local/CyberCP/wordpressToolkitPro/repair-menu.sh

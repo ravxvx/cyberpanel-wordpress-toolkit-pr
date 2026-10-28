@@ -46,7 +46,7 @@ MYSQLBIN="$(command -v mariadb || command -v mysql)"
 [ -n "$MYSQLBIN" ] || done_fail "mariadb client not found"
 DBROOT="$(cat /etc/cyberpanel/mysqlPassword 2>/dev/null)"
 [ -n "$DBROOT" ] || done_fail "cannot read /etc/cyberpanel/mysqlPassword"
-SQL(){ "$MYSQLBIN" -uroot -p"$DBROOT" -e "$1"; }
+SQL(){ printf '%s\n' "$1" | MYSQL_PWD="$DBROOT" "$MYSQLBIN" -uroot; }   # password via env + SQL via stdin: nothing sensitive in `ps`
 
 BASE="$(printf '%s' "$DOMAIN" | tr -c 'a-z0-9' '_' | cut -c1-10)"
 SUF="$(openssl rand -hex 3)"

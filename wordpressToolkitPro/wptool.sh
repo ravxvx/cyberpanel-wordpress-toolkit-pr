@@ -206,10 +206,10 @@ restore)
   DBU="$(wpd "$STG/public_html" config get DB_USER --skip-plugins --skip-themes 2>/dev/null | tail -1)"
   DBPW="$(wpd "$STG/public_html" config get DB_PASSWORD --skip-plugins --skip-themes 2>/dev/null | tail -1)"
   echo "== Restoring database $DBN =="
-  "$MYSQLBIN" -uroot -e "DROP DATABASE IF EXISTS \`$DBN\`; CREATE DATABASE \`$DBN\` CHARACTER SET utf8mb4;" || fail "cannot recreate database"
+  printf '%s\n' "DROP DATABASE IF EXISTS \`$DBN\`; CREATE DATABASE \`$DBN\` CHARACTER SET utf8mb4;" | "$MYSQLBIN" -uroot || fail "cannot recreate database"
   if [[ "$DBU" =~ ^[A-Za-z0-9_]{1,32}$ ]] && [[ "$DBPW" =~ ^[A-Za-z0-9_@#%^*+=.:,-]{6,128}$ ]]; then
     # recreate the database user (it is gone after "Remove WP") with the password from the backup's wp-config.php
-    "$MYSQLBIN" -uroot -e "CREATE USER IF NOT EXISTS '$DBU'@'localhost' IDENTIFIED BY '$DBPW'; ALTER USER '$DBU'@'localhost' IDENTIFIED BY '$DBPW'; GRANT ALL ON \`$DBN\`.* TO '$DBU'@'localhost'; FLUSH PRIVILEGES;" \
+    printf '%s\n' "CREATE USER IF NOT EXISTS '$DBU'@'localhost' IDENTIFIED BY '$DBPW'; ALTER USER '$DBU'@'localhost' IDENTIFIED BY '$DBPW'; GRANT ALL ON \`$DBN\`.* TO '$DBU'@'localhost'; FLUSH PRIVILEGES;" | "$MYSQLBIN" -uroot \
       || fail "cannot recreate the database user"
   else
     echo "WARNING: database user/password in the backup could not be recreated automatically."
@@ -255,7 +255,7 @@ uninstall)
   echo "== Safety backup (kept after removal) =="
   do_backup
   echo "== Removing database $DBN and user $DBU =="
-  "$MYSQLBIN" -uroot -e "DROP DATABASE IF EXISTS \`$DBN\`; DROP USER IF EXISTS '$DBU'@'localhost'; FLUSH PRIVILEGES;" || fail "cannot drop database"
+  printf '%s\n' "DROP DATABASE IF EXISTS \`$DBN\`; DROP USER IF EXISTS '$DBU'@'localhost'; FLUSH PRIVILEGES;" | "$MYSQLBIN" -uroot || fail "cannot drop database"
   echo "== Removing files from $DIR =="
   find "$DIR" -mindepth 1 -maxdepth 1 ! -name '.well-known' ! -name 'cgi-bin' -exec rm -rf {} +
   fix_perms

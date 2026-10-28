@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.4.1
+* Robustness: the sidebar link is now written in a safe form (`{% url ... as var %}` + `{% if %}`), so if the plugin's URL ever disappears (e.g. a CyberPanel upgrade resets `urls.py`) the link is just hidden instead of breaking every panel page with HTTP 500. `repair-menu.sh` upgrades an older link automatically.
+* Robustness: CyberPanel internals are imported lazily, so a future CyberPanel refactor can only break the plugin's own pages, never the whole panel.
+* Security: the MariaDB root password and the new database user's password no longer appear on any command line (`MYSQL_PWD` environment variable + SQL via stdin).
+
 ## 3.4.0
 * Restore works for sites whose WordPress was removed ("Restore from backup" card); DB user is recreated from the backup.
 

@@ -6,9 +6,6 @@ import shlex
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-from plogical.acl import ACLManager
-from plogical.httpProc import httpProc
-from plogical.processUtilities import ProcessUtilities
 
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(PLUGIN_DIR, "wpinstall.sh")
@@ -23,8 +20,15 @@ FILE_RE = re.compile(r"^[a-z0-9.-]+-[0-9]{8}-[0-9]{6}\.tar\.gz$")
 ACTIONS = ("list", "login", "update", "backup", "backups", "restore", "ssl", "language", "uninstall")
 
 
+def _run(command):
+    # Imported lazily: if CyberPanel moves this module, only the plugin pages break - not every panel page.
+    from plogical.processUtilities import ProcessUtilities
+    return ProcessUtilities.outputExecutioner(command)
+
+
 def _is_admin(request):
     try:
+        from plogical.acl import ACLManager
         user_id = request.session["userID"]
         return bool(ACLManager.loadedACL(user_id)["admin"])
     except Exception:
@@ -51,6 +55,7 @@ def dashboard(request):
         meta = _meta()
     except Exception:
         domains, meta = [], {}
+    from plogical.httpProc import httpProc
     proc = httpProc(request, "wordpressToolkitPro/dashboard.html", {"domains": domains, "meta": meta}, "admin")
     return proc.render()
 
@@ -81,7 +86,7 @@ def deploy(request):
     log = "%s/%s.log" % (LOG_DIR, domain)
     inner = "mkdir -p %s && chmod 700 %s && : > %s && chmod 600 %s && setsid nohup bash %s > %s 2>&1 < /dev/null &" % (
         LOG_DIR, LOG_DIR, shlex.quote(log), shlex.quote(log), args, shlex.quote(log))
-    ProcessUtilities.outputExecutioner("bash -c " + shlex.quote(inner))
+    _run("bash -c " + shlex.quote(inner))
     return JsonResponse({"ok": True, "message": "Installation started."})
 
 
@@ -92,7 +97,7 @@ def status(request):
     domain = request.POST.get("domain", "").strip().lower()
     if domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain."})
-    out = ProcessUtilities.outputExecutioner("cat %s" % shlex.quote("%s/%s.log" % (LOG_DIR, domain)))
+    out = _run("cat %s" % shlex.quote("%s/%s.log" % (LOG_DIR, domain)))
     out = out if isinstance(out, str) else ""
     done = "__DONE__" in out
     success = "__DONE__ OK" in out
@@ -131,7 +136,7 @@ def job(request):
     nonce = secrets.token_hex(6)
     args = " ".join(shlex.quote(a) for a in (JOB_SCRIPT, action, domain or "-", extra or "-", nonce))
     inner = "mkdir -p %s && chmod 700 %s && setsid nohup bash %s > /dev/null 2>&1 < /dev/null &" % (LOG_DIR, LOG_DIR, args)
-    ProcessUtilities.outputExecutioner("bash -c " + shlex.quote(inner))
+    _run("bash -c " + shlex.quote(inner))
     return JsonResponse({"ok": True, "nonce": nonce})
 
 
@@ -148,7 +153,7 @@ def jobstatus(request):
         domain = ""
     elif domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain."})
-    out = ProcessUtilities.outputExecutioner("cat %s" % shlex.quote(_job_log(action, domain)))
+    out = _run("cat %s" % shlex.quote(_job_log(action, domain)))
     out = out if isinstance(out, str) else ""
     marker = "__START__ " + nonce
     if marker not in out:

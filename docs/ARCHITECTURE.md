@@ -28,6 +28,9 @@ wordpressToolkitPro/
 * **Login links.** A tiny must-use plugin (`wp-content/mu-plugins/wpt-login.php`) accepts `?wpt_login=<token>` on `wp-login.php`, compares the SHA-256 of the token with a value stored via WP-CLI (`wpt_login_token = hash|expiry|userId`), deletes it on use, and logs the first administrator in.
 * **Backups** use `mariadb-dump --single-transaction` plus `tar`, authenticated with the root password from `/etc/cyberpanel/mysqlPassword` (exported as `MYSQL_PWD`, not on the command line).
 
+* **The sidebar link cannot break the panel.** It is inserted as one line: `{% url 'wordpressToolkitPro' as wpt_url %}{% if wpt_url %}<a ...>{% endif %}`. With `as`, Django does not raise `NoReverseMatch`; the link is hidden if the route is missing. `views.py` imports CyberPanel modules inside functions for the same reason (a failing import at URL-load time would take every panel page down).
+* **After a CyberPanel upgrade** the registrations in `settings.py` / `urls.py` / `index.html` may be reset. Reinstall the plugin (remove, then install) or run `repair-menu.sh` (menu only).
+
 ## Building a release
 
 ```bash

@@ -18,6 +18,10 @@ It runs shell scripts **as root** on your server, on behalf of CyberPanel admini
 * The plugin's job logs can contain the one-time link and installer passwords. They are root-only; delete old files in `/var/log/wptoolkit/` if you wish.
 * Backups contain the complete site and database (including `wp-config.php` secrets). They are stored root-only in `/home/wptoolkit-backups/`; protect any off-server copy.
 
+* **Status:** this plugin has not had an independent security audit and has no automated tests. Treat it as beta software.
+* WP-CLI is started with the generated database / admin passwords as command-line arguments for a few seconds during a fresh install (`wp config create`, `wp core install`). On a server where untrusted local users can run commands (shared hosting with shell/PHP `exec`), those could be read from the process list. Mitigation: mount `/proc` with `hidepid=2` (`mount -o remount,hidepid=2 /proc`; make it permanent in `/etc/fstab`), or install only on servers without untrusted local users.
+* Use a hosting-provider snapshot before installing or updating any panel plugin.
+
 ## Reporting a vulnerability
 
 Please do **not** open a public issue. Use GitHub's **"Report a vulnerability"** (Security tab → Advisories) on this repository, or contact the maintainer privately. Include the version, steps to reproduce and impact.
