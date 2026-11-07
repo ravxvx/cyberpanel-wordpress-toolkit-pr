@@ -72,7 +72,7 @@
   <div class="wpt-head">
     <div>
       <h2>WordPress Toolkit Pro</h2>
-      <p>Site list, one-click login, updates, backups, SSL, language switch and installer.</p>
+      <p>Site list, one-click login, updates, backups, schedules, plugins, maintenance, security checks, cleanup, error logs, SSL, language switch and installer.</p>
     </div>
     <button type="button" id="wptRefresh" class="wpt-btn"><i class="fas fa-arrows-rotate"></i> Refresh list</button>
   </div>
@@ -110,9 +110,90 @@
   <div class="wpt-card" id="wptBackupsPanel" style="display:none">
     <div class="wpt-title">Backups: <span id="wptBackupsDomain" class="wpt-muted"></span></div>
     <div class="wpt-scroll">
-      <table class="wpt-table" id="wptBackupsTable"><thead><tr><th>File</th><th>Size</th><th>Date</th><th></th></tr></thead><tbody></tbody></table>
+      <table class="wpt-table" id="wptBackupsTable"><thead><tr><th style="width:32px"><input type="checkbox" id="wptBkAll" title="Select all"></th><th>File</th><th>Size</th><th>Date</th><th></th></tr></thead><tbody></tbody></table>
     </div>
+    <div class="wpt-body" style="padding-bottom:0"><button type="button" class="wpt-btn danger" id="wptBkDelSel"><i class="fas fa-trash"></i> Delete selected</button></div>
     <div class="wpt-body wpt-muted" style="padding-top:0">Backups are stored on the server in <code>/home/wptoolkit-backups/DOMAIN/</code> (the 7 newest per site). An extra safety backup is made before updates, SSL switch and restore.</div>
+  </div>
+
+  <div class="wpt-card">
+    <div class="wpt-title">Scheduled backups</div>
+    <div class="wpt-scroll">
+      <table class="wpt-table" id="wptSchedTable">
+        <thead><tr><th>Site</th><th>Frequency</th><th>Keep newest</th><th>Last backup</th><th></th></tr></thead>
+        <tbody><tr><td colspan="5" class="wpt-empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="wpt-body wpt-muted" style="padding-top:0">Scheduled backups run at 03:15 server time (weekly: Sunday). "Keep newest" applies to all backups of the site, including the safety backups made before updates. Older ones are deleted automatically.</div>
+  </div>
+
+  <div class="wpt-card" id="wptPlugCard">
+    <div class="wpt-title">Plugins and themes</div>
+    <div class="wpt-body">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select class="wpt-input" id="wptPlugDomain" style="max-width:260px">
+          {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}
+        </select>
+        <button type="button" class="wpt-btn primary" id="wptPlugLoad"><i class="fas fa-puzzle-piece"></i> Load</button>
+        <button type="button" class="wpt-btn warn" id="wptPlugOffAll"><i class="fas fa-power-off"></i> Deactivate all plugins</button>
+        <button type="button" class="wpt-btn" id="wptPlugRestore"><i class="fas fa-rotate-left"></i> Restore plugins</button>
+      </div>
+      <p class="wpt-muted" style="margin:10px 0 0">White screen or 500 error? "Deactivate all plugins" saves the list of active plugins and turns them off, so you can find the culprit; "Restore plugins" turns the saved list back on. Updating a single plugin or theme makes a safety backup first.</p>
+    </div>
+    <div class="wpt-scroll" id="wptPlugWrap" style="display:none">
+      <table class="wpt-table" id="wptPlugTable"><thead><tr><th>Name</th><th>Type</th><th>Version</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div class="wpt-card" id="wptToolsCard">
+    <div class="wpt-title">Maintenance, security and cleanup</div>
+    <div class="wpt-body">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select class="wpt-input" id="wptToolDomain" style="max-width:260px">
+          {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <button type="button" class="wpt-btn warn" data-tool="maint:on"><i class="fas fa-screwdriver-wrench"></i> Maintenance ON</button>
+        <button type="button" class="wpt-btn" data-tool="maint:off"><i class="fas fa-circle-check"></i> Maintenance OFF</button>
+        <button type="button" class="wpt-btn" data-tool="maint:status"><i class="fas fa-circle-question"></i> Status</button>
+        <button type="button" class="wpt-btn primary" data-tool="verify:"><i class="fas fa-shield-halved"></i> Check file integrity</button>
+        <button type="button" class="wpt-btn" data-tool="tidy:cache"><i class="fas fa-broom"></i> Clear cache</button>
+        <button type="button" class="wpt-btn warn" data-tool="tidy:db"><i class="fas fa-database"></i> Clean database</button>
+        <button type="button" class="wpt-btn" data-tool="admins:"><i class="fas fa-users"></i> List administrators</button>
+      </div>
+      <p class="wpt-muted" style="margin:10px 0 0"><b>Maintenance:</b> visitors get a temporary "unavailable" page (HTTP 503) while you work. <b>File integrity:</b> compares WordPress core and wordpress.org plugin files with the official releases (finds modified files, e.g. after a break-in). <b>Clean database:</b> deletes post revisions, spam and trashed comments and expired transients, then optimizes tables (a backup is made first).</p>
+      <div id="wptAdmins" style="display:none;margin-top:14px"></div>
+      <div id="wptPwBox" class="wpt-status s-warn" style="display:none;margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div class="wpt-card" id="wptErrCard">
+    <div class="wpt-title">Error logs</div>
+    <div class="wpt-body">
+      <p class="wpt-muted" style="margin-top:0">Read the error logs of a website to find out why a page shows a white screen, a 500 error or a plugin fails.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select class="wpt-input" id="wptLogDomain" style="max-width:260px">
+          {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}
+        </select>
+        <select class="wpt-input" id="wptLogSrc" style="max-width:300px">
+          <option value="vhost">Web server error log (500 errors, PHP fatals)</option>
+          <option value="wp">WordPress debug.log</option>
+          <option value="php">PHP error_log (site folder)</option>
+        </select>
+        <select class="wpt-input" id="wptLogLines" style="max-width:130px">
+          <option value="50">last 50</option><option value="200" selected>last 200</option><option value="500">last 500</option>
+        </select>
+        <button type="button" class="wpt-btn primary" id="wptLogView"><i class="fas fa-file-lines"></i> View log</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button type="button" class="wpt-btn" id="wptDbgOn"><i class="fas fa-bug"></i> Enable debug</button>
+        <button type="button" class="wpt-btn" id="wptDbgOff"><i class="fas fa-bug-slash"></i> Disable debug</button>
+        <button type="button" class="wpt-btn danger" id="wptDbgClear"><i class="fas fa-eraser"></i> Clear debug.log</button>
+      </div>
+      <p class="wpt-muted" style="margin:10px 0 8px">"Enable debug" turns on WordPress debug logging (errors are written to <code>wp-content/debug.log</code>, never shown on the page, and the file is blocked from the web). Turn it off when finished.</p>
+      <pre id="wptErrLog" class="wpt-log">Pick a website and click "View log".</pre>
+    </div>
   </div>
 
   <div class="wpt-card">
@@ -202,7 +283,7 @@
         (function poll() {
           post(URLS.jobstatus, {action: action, domain: domain || '', nonce: d.nonce}).then(function (s) {
             if (!s.ok) { reject(new Error(s.error || 'Status error')); return; }
-            if (s.started && !quiet) { show(s.log.replace(/^LOGINURL\|.*$/mg, '(login link below)')); }
+            if (s.started && !quiet) { show(s.log.replace(/^LOGINURL\|.*$/mg, '(login link below)').replace(/^NEWPASS\|.*$/mg, '(password hidden)')); }
             if (s.done) { resolve({success: s.success, log: s.log}); return; }
             if (++tries > 400) { reject(new Error('Timed out. Check /var/log/wptoolkit/ on the server.')); return; }
             setTimeout(poll, 1500);
@@ -241,6 +322,8 @@
       act.appendChild(btn('Backup', 'fa-floppy-disk', '', function () { simple('backup', dom); }));
       act.appendChild(btn('Backups', 'fa-clock-rotate-left', '', function () { showBackups(dom); }));
       act.appendChild(btn('Switch to https', 'fa-lock', '', function () { simple('ssl', dom, 'Switch ' + dom + ' addresses to https? Requires a real certificate issued in CyberPanel. A backup is made first.'); }));
+      act.appendChild(btn('Plugins', 'fa-puzzle-piece', '', function () { openPlugins(dom); }));
+      act.appendChild(btn('Logs', 'fa-file-lines', '', function () { openLogs(dom); }));
       act.appendChild(btn('Language', 'fa-language', '', function () { languageDialog(dom, p[7] || 'en_US'); }));
       act.appendChild(btn('Remove WP', 'fa-trash', 'danger', function () { uninstallDialog(dom); }));
       td(tr, act); tb.appendChild(tr);
@@ -256,7 +339,7 @@
     setBusy(true); msg('info', 'Scanning sites...');
     return runJob('list', '', '', true).then(function (r) {
       renderSites(r.log); msg('ok', 'List refreshed.');
-    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); return loadSched(); });
   }
 
   function simple(action, dom, confirmText, extra) {
@@ -325,18 +408,23 @@
     runJob('backups', dom, '', true).then(function (r) {
       var tb = document.querySelector('#wptBackupsTable tbody'); tb.innerHTML = '';
       document.getElementById('wptBackupsDomain').textContent = dom;
+      document.getElementById('wptBkAll').checked = false;
       var n = 0;
       r.log.split('\n').forEach(function (line) {
         if (line.indexOf('BACKUP|') !== 0) { return; }
         var p = line.split('|'); n++;
         var tr = document.createElement('tr');
+        var cb = el('input'); cb.type = 'checkbox'; cb.className = 'wpt-bk'; cb.value = p[1]; td(tr, cb);
         td(tr, p[1]); td(tr, (parseInt(p[2], 10) / 1048576).toFixed(1) + ' MB'); td(tr, p[3]);
-        td(tr, btn('Restore', 'fa-rotate-left', 'warn', function () {
+        var ba = el('div', 'wpt-actions');
+        ba.appendChild(btn('Restore', 'fa-rotate-left', 'warn', function () {
           if (window.confirm('RESTORE ' + dom + ' from backup ' + p[1] + '?\nCurrent files and database will be replaced (a safety backup is made first).')) { restore(dom, p[1]); }
         }));
+        ba.appendChild(btn('Delete', 'fa-trash', 'danger', function () { deleteBackups(dom, [p[1]]); }));
+        td(tr, ba);
         tb.appendChild(tr);
       });
-      if (!n) { tb.innerHTML = '<tr><td colspan="4" class="wpt-empty">No backups yet - click "Backup".</td></tr>'; }
+      if (!n) { tb.innerHTML = '<tr><td colspan="5" class="wpt-empty">No backups yet - click "Backup".</td></tr>'; }
       document.getElementById('wptBackupsPanel').style.display = 'block';
       msg('ok', 'Backup list ready.');
     }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
@@ -349,6 +437,201 @@
       msg(r.success ? 'ok' : 'bad', r.success ? 'Site restored: ' + dom : 'Restore failed - see the log below.');
     }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); loadList(); });
   }
+
+  function renderSched(log) {
+    var tb = document.querySelector('#wptSchedTable tbody'); tb.innerHTML = ''; var n = 0;
+    log.split('\n').forEach(function (line) {
+      if (line.indexOf('SCHED|') !== 0) { return; }
+      var p = line.split('|'); var dom = p[1]; n++;
+      var tr = document.createElement('tr'); td(tr, dom);
+      var fsel = el('select', 'wpt-input'); fsel.style.maxWidth = '150px';
+      [['off', 'Off'], ['daily', 'Daily'], ['weekly', 'Weekly (Sunday)']].forEach(function (o) { var x = el('option', '', o[1]); x.value = o[0]; fsel.appendChild(x); });
+      fsel.value = p[2]; td(tr, fsel);
+      var ksel = el('select', 'wpt-input'); ksel.style.maxWidth = '110px';
+      [2, 3, 5, 7, 10, 14, 21, 30, 60].forEach(function (k) { var x = el('option', '', String(k)); x.value = String(k); ksel.appendChild(x); });
+      if (!ksel.querySelector('option[value="' + p[3] + '"]')) { var xo = el('option', '', p[3]); xo.value = p[3]; ksel.appendChild(xo); }
+      ksel.value = p[3]; td(tr, ksel);
+      td(tr, p[4] || 'never');
+      td(tr, btn('Save', 'fa-floppy-disk', 'primary', function () {
+        if (busy) { return; }
+        setBusy(true); show('Start...'); msg('info', 'Saving schedule for ' + dom + '...');
+        runJob('setsched', dom, fsel.value + ':' + ksel.value).then(function (r) {
+          msg(r.success ? 'ok' : 'bad', r.success ? 'Schedule saved for ' + dom + '.' : 'Could not save - see the log below.');
+        }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+      }));
+      tb.appendChild(tr);
+    });
+    if (!n) { tb.innerHTML = '<tr><td colspan="5" class="wpt-empty">No WordPress sites found.</td></tr>'; }
+  }
+  function loadSched() {
+    return runJob('getsched', '', '', true).then(function (r) { renderSched(r.log); }).catch(function () {});
+  }
+
+  function renderPlugins(dom, log) {
+    var tb = document.querySelector('#wptPlugTable tbody'); tb.innerHTML = ''; var n = 0;
+    log.split('\n').forEach(function (line) {
+      var kind = line.indexOf('PLUGIN|') === 0 ? 'plugin' : (line.indexOf('THEME|') === 0 ? 'theme' : '');
+      if (!kind) { return; }
+      var p = line.split('|'); var name = p[1], st = p[2], upd = p[3], ver = p[4]; n++;
+      var tr = document.createElement('tr');
+      td(tr, name); td(tr, kind === 'plugin' ? 'Plugin' : 'Theme'); td(tr, ver || '');
+      var sc = td(tr, '');
+      var active = (st === 'active' || st === 'active-network');
+      sc.appendChild(badge(active ? 'ok' : 'gray', st));
+      if (upd === 'available') { sc.appendChild(badge('warn', 'update')); }
+      var act = el('div', 'wpt-actions');
+      if (kind === 'plugin') {
+        if (active) { act.appendChild(btn('Deactivate', 'fa-power-off', '', function () { plugOp(dom, 'plugin-deactivate:' + name, null); })); }
+        else { act.appendChild(btn('Activate', 'fa-play', 'primary', function () { plugOp(dom, 'plugin-activate:' + name, null); })); }
+        if (upd === 'available') { act.appendChild(btn('Update', 'fa-arrows-rotate', 'warn', function () { plugOp(dom, 'plugin-update:' + name, 'Update plugin ' + name + ' on ' + dom + '? A backup is made first.'); })); }
+      } else {
+        if (!active) { act.appendChild(btn('Activate', 'fa-play', 'primary', function () { plugOp(dom, 'theme-activate:' + name, 'Switch the active theme of ' + dom + ' to ' + name + '? The look of the site will change.'); })); }
+        if (upd === 'available') { act.appendChild(btn('Update', 'fa-arrows-rotate', 'warn', function () { plugOp(dom, 'theme-update:' + name, 'Update theme ' + name + ' on ' + dom + '? A backup is made first.'); })); }
+      }
+      td(tr, act); tb.appendChild(tr);
+    });
+    if (!n) { tb.innerHTML = '<tr><td colspan="5" class="wpt-empty">Nothing found.</td></tr>'; }
+    document.getElementById('wptPlugWrap').style.display = 'block';
+  }
+  function loadPlugins(dom) {
+    dom = dom || document.getElementById('wptPlugDomain').value; if (!dom || busy) { return Promise.resolve(); }
+    setBusy(true); msg('info', 'Loading plugins of ' + dom + '...');
+    return runJob('plugins', dom, '', true).then(function (r) {
+      if (!r.success) { throw new Error('Could not read the plugin list.'); }
+      renderPlugins(dom, r.log); msg('ok', 'Loaded.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+  }
+  function plugOp(dom, op, confirmText) {
+    if (busy) { return; }
+    if (confirmText && !window.confirm(confirmText)) { return; }
+    setBusy(true); show('Start...'); msg('info', op.split(':')[0] + ': ' + dom + '...');
+    runJob('pluginop', dom, op).then(function (r) {
+      msg(r.success ? 'ok' : 'bad', r.success ? 'Done.' : 'Failed - see the log below.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); loadPlugins(dom); });
+  }
+  function openPlugins(dom) {
+    document.getElementById('wptPlugDomain').value = dom;
+    document.getElementById('wptPlugCard').scrollIntoView({behavior: 'smooth', block: 'start'});
+    loadPlugins(dom);
+  }
+  document.getElementById('wptPlugLoad').addEventListener('click', function () { loadPlugins(); });
+  document.getElementById('wptPlugOffAll').addEventListener('click', function () {
+    var d = document.getElementById('wptPlugDomain').value; if (!d) { return; }
+    plugOp(d, 'plugins-deactivate-all:-', 'Deactivate ALL plugins on ' + d + '? The site may look broken until you restore them. The list of active plugins is saved.');
+  });
+  document.getElementById('wptPlugRestore').addEventListener('click', function () {
+    var d = document.getElementById('wptPlugDomain').value; if (!d) { return; }
+    plugOp(d, 'plugins-restore:-', 'Re-activate the plugins that were active before "Deactivate all" on ' + d + '?');
+  });
+
+  var TOOLNAMES = {maint: 'Maintenance mode', verify: 'File integrity check', tidy: 'Cleanup', admins: 'Administrators', resetpw: 'Password reset'};
+  function toolRun(action, extra, confirmText, quiet) {
+    var dom = document.getElementById('wptToolDomain').value; if (!dom || busy) { return Promise.resolve(null); }
+    if (confirmText && !window.confirm(confirmText.replace('%d', dom))) { return Promise.resolve(null); }
+    setBusy(true); if (!quiet) { show('Start...'); } msg('info', (TOOLNAMES[action] || action) + ': ' + dom + '...');
+    return runJob(action, dom, extra, quiet).then(function (r) { setBusy(false); return {dom: dom, r: r}; })
+      .catch(function (e) { setBusy(false); msg('bad', e.message); return null; });
+  }
+  function showAdmins(dom, log) {
+    var box = document.getElementById('wptAdmins'); box.innerHTML = ''; var n = 0;
+    var t = el('table', 'wpt-table'); var hd = document.createElement('thead'); hd.innerHTML = '<tr><th>ID</th><th>Login</th><th>E-mail</th><th></th></tr>'; t.appendChild(hd);
+    var tb = document.createElement('tbody');
+    log.split('\n').forEach(function (line) {
+      if (line.indexOf('ADMIN|') !== 0) { return; }
+      var p = line.split('|'); n++;
+      var tr = document.createElement('tr'); td(tr, p[1]); td(tr, p[2]); td(tr, p[3]);
+      td(tr, btn('Reset password', 'fa-key', 'warn', function () {
+        toolRun('resetpw', p[1], 'Set a NEW random password for administrator "' + p[2] + '" on %d? The old password stops working and the user is logged out everywhere.', true).then(function (x) {
+          if (!x) { return; }
+          var m = x.r.log.match(/^NEWPASS\|(\S+)$/m); var pb = document.getElementById('wptPwBox'); pb.innerHTML = '';
+          if (x.r.success && m) {
+            pb.className = 'wpt-status s-warn'; pb.style.display = 'flex';
+            pb.appendChild(el('span', '', 'New password for ' + p[2] + ' on ' + x.dom + ' (shown once - copy it now): '));
+            pb.appendChild(el('code', '', m[1]));
+            msg('ok', 'Password changed.');
+          } else { pb.style.display = 'none'; msg('bad', 'Could not change the password.'); }
+        });
+      }));
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb); box.appendChild(n ? t : el('div', 'wpt-muted', 'No administrators found.')); box.style.display = 'block';
+  }
+  document.querySelectorAll('#wptToolsCard [data-tool]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var parts = b.getAttribute('data-tool').split(':'), action = parts[0], extra = parts[1] || '';
+      var conf = null, quiet = (action === 'admins');
+      if (action === 'maint' && extra === 'on') { conf = 'Turn maintenance mode ON for %d? Visitors will see an "unavailable" page until you turn it off.'; }
+      if (action === 'tidy' && extra === 'db') { conf = 'Clean the database of %d (revisions, spam/trash comments, expired transients)? A backup is made first. Revisions cannot be recovered afterwards.'; }
+      toolRun(action, extra, conf, quiet).then(function (x) {
+        if (!x) { return; }
+        var r = x.r;
+        if (action === 'admins') { showAdmins(x.dom, r.log); msg(r.success ? 'ok' : 'bad', r.success ? 'Administrators loaded.' : 'Could not list administrators.'); return; }
+        if (action === 'verify') {
+          var m = r.log.match(/^RESULT\|(CLEAN|ISSUES)(?:\|(\d+))?$/m);
+          if (m && m[1] === 'CLEAN') { msg('ok', 'File integrity: all checked files match the official releases.'); }
+          else if (m) { msg('warn', 'File integrity: ' + m[2] + ' file(s) differ - read the log below.'); }
+          else { msg('bad', 'Check failed - see the log below.'); }
+          return;
+        }
+        if (action === 'maint') {
+          var s = r.log.match(/^RESULT\|(ON|OFF)$/m);
+          msg(r.success ? (s && s[1] === 'ON' ? 'warn' : 'ok') : 'bad', r.success ? 'Maintenance mode is ' + (s ? s[1] : '?') + ' on ' + x.dom + '.' : 'Failed - see the log below.');
+          return;
+        }
+        msg(r.success ? 'ok' : 'bad', r.success ? 'Done - see the log below.' : 'Failed - see the log below.');
+      });
+    });
+  });
+
+  function deleteBackups(dom, names) {
+    if (busy || !names.length) { return; }
+    var text = names.length === 1
+      ? 'Permanently delete backup ' + names[0] + ' of ' + dom + '? This cannot be undone.'
+      : 'Permanently delete ' + names.length + ' selected backups of ' + dom + '? This cannot be undone.';
+    if (!window.confirm(text)) { return; }
+    setBusy(true); show('Start...'); msg('info', 'Deleting ' + names.length + ' backup(s)...');
+    runJob('delbackup', dom, names.join(',')).then(function (r) {
+      msg(r.success ? 'ok' : 'bad', r.success ? 'Backups deleted.' : 'Delete failed - see the log below.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); showBackups(dom); });
+  }
+  document.getElementById('wptBkAll').addEventListener('change', function () {
+    var on = this.checked; document.querySelectorAll('#wptBackupsTable .wpt-bk').forEach(function (c) { c.checked = on; });
+  });
+  document.getElementById('wptBkDelSel').addEventListener('click', function () {
+    var dom = document.getElementById('wptBackupsDomain').textContent;
+    var names = []; document.querySelectorAll('#wptBackupsTable .wpt-bk:checked').forEach(function (c) { names.push(c.value); });
+    if (!names.length) { msg('warn', 'Tick at least one backup first.'); return; }
+    deleteBackups(dom, names);
+  });
+
+  var errEl = document.getElementById('wptErrLog');
+  function viewLog() {
+    var dom = document.getElementById('wptLogDomain').value; if (!dom || busy) { return; }
+    var extra = document.getElementById('wptLogSrc').value + ':' + document.getElementById('wptLogLines').value;
+    setBusy(true); msg('info', 'Reading log of ' + dom + '...'); errEl.textContent = 'Loading...';
+    runJob('errlog', dom, extra, true).then(function (r) {
+      errEl.textContent = r.log || '(empty)'; errEl.scrollTop = errEl.scrollHeight;
+      msg(r.success ? 'ok' : 'bad', r.success ? 'Log loaded (newest lines at the bottom).' : 'Could not read the log.');
+    }).catch(function (e) { errEl.textContent = ''; msg('bad', e.message); }).then(function () { setBusy(false); });
+  }
+  function debugAction(opt) {
+    var dom = document.getElementById('wptLogDomain').value; if (!dom || busy) { return; }
+    var q = {on: 'Enable WordPress debug logging on ' + dom + '?', off: 'Disable WordPress debug logging on ' + dom + '?', clear: 'Clear debug.log of ' + dom + '?'};
+    if (!window.confirm(q[opt])) { return; }
+    setBusy(true); show('Start...'); msg('info', 'Debug (' + opt + '): ' + dom + '...');
+    runJob('debug', dom, opt).then(function (r) {
+      msg(r.success ? 'ok' : 'bad', r.success ? 'Done - see the operation log below.' : 'Failed - see the operation log below.');
+    }).catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
+  }
+  function openLogs(dom) {
+    document.getElementById('wptLogDomain').value = dom;
+    document.getElementById('wptErrCard').scrollIntoView({behavior: 'smooth', block: 'start'});
+    viewLog();
+  }
+  document.getElementById('wptLogView').addEventListener('click', viewLog);
+  document.getElementById('wptDbgOn').addEventListener('click', function () { debugAction('on'); });
+  document.getElementById('wptDbgOff').addEventListener('click', function () { debugAction('off'); });
+  document.getElementById('wptDbgClear').addEventListener('click', function () { debugAction('clear'); });
 
   var f = document.getElementById('wptForm');
   f.addEventListener('submit', function (e) {

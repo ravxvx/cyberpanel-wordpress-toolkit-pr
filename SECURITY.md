@@ -16,6 +16,8 @@ It runs shell scripts **as root** on your server, on behalf of CyberPanel admini
 
 * The one-time login link on an **http** site travels unencrypted; switch to https first.
 * The plugin's job logs can contain the one-time link and installer passwords. They are root-only; delete old files in `/var/log/wptoolkit/` if you wish.
+* The administrator password reset shows the new password once in the panel; it also remains in the root-only job log (`/var/log/wptoolkit/job-resetpw-<domain>.log`) until that job runs again.
+* Log viewing refuses files whose real path is outside `/home/<domain>/` (symlink protection); backup deletion accepts only validated file names of the selected site.
 * Backups contain the complete site and database (including `wp-config.php` secrets). They are stored root-only in `/home/wptoolkit-backups/`; protect any off-server copy.
 
 * **Status:** this plugin has not had an independent security audit and has no automated tests. Treat it as beta software.

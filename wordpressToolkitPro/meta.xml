@@ -2,6 +2,6 @@
 <cyberpanelPluginConfig>
     <name>wordpressToolkitPro</name>
     <type>plugin</type>
-    <description>WordPress Toolkit Pro - WordPress manager: site list, login, updates, backups, SSL, language, uninstall and installer</description>
-    <version>3.4.1</version>
+    <description>WordPress Toolkit Pro - WordPress manager: site list, login, updates, backups (scheduled, deletable), plugin and theme manager, maintenance mode, file integrity check, admin password reset, cache and database cleanup, error logs, SSL, language, uninstall and installer</description>
+    <version>3.7.0</version>
 </cyberpanelPluginConfig>

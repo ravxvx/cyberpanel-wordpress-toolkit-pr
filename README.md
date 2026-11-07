@@ -18,6 +18,14 @@ A free, open-source plugin for [CyberPanel](https://cyberpanel.net/) (OpenLiteSp
 | **Switch to https** | After you issue a certificate in CyberPanel: rewrites `http://` to `https://` in the database and adds an http→https redirect. Refuses self-signed certificates. |
 | **Language** | Switches the WordPress language (core, plugins, themes) and resets per-user languages. |
 | **Remove WP** | Deletes the files, database and DB user of a site (the website stays in CyberPanel). Needs the domain typed as confirmation; a backup is taken first. |
+| **Delete backups** | Remove one or several backups from the list. |
+| **Scheduled backups** | Per-site daily / weekly backups (03:15) and how many to keep. |
+| **Plugins and themes** | Activate, deactivate, update; deactivate all plugins and restore them again (white-screen debugging). |
+| **Error logs** | Web server, `debug.log` and PHP error logs in the panel; switch WordPress debug logging on/off. |
+| **Maintenance mode** | One click on/off (HTTP 503 for visitors). |
+| **File integrity check** | Compares core and wordpress.org plugin files with the official releases. |
+| **Admins and password reset** | Lists administrators and sets a new random password. |
+| **Cache and database cleanup** | Clears caches; removes revisions, spam/trash comments and expired transients. |
 | **Installer** | Installs a fresh WordPress (random DB name/user/password, generated admin password, optional LiteSpeed Cache). Rolls back on failure. |
 
 ## Screenshots

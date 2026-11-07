@@ -17,7 +17,13 @@ MAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 LOCALE_RE = re.compile(r"^[a-z]{2,3}(_[A-Z]{2})?$")
 NONCE_RE = re.compile(r"^[0-9a-f]{12}$")
 FILE_RE = re.compile(r"^[a-z0-9.-]+-[0-9]{8}-[0-9]{6}\.tar\.gz$")
-ACTIONS = ("list", "login", "update", "backup", "backups", "restore", "ssl", "language", "uninstall")
+ACTIONS = ("list", "login", "update", "backup", "backups", "delbackup", "restore", "ssl", "language", "uninstall", "errlog", "debug", "getsched", "setsched", "plugins", "pluginop", "maint", "verify", "admins", "resetpw", "tidy")
+SCHED_RE = re.compile(r"^(off|daily|weekly):([2-9]|[1-5][0-9]|60)$")
+PLUGOP_RE = re.compile(r"^(plugin-activate|plugin-deactivate|plugin-update|theme-activate|theme-update|plugins-deactivate-all|plugins-restore):([A-Za-z0-9][A-Za-z0-9._-]{0,99}|-)$")
+MAINT_RE = re.compile(r"^(on|off|status)$")
+TIDY_RE = re.compile(r"^(cache|db)$")
+UID_RE = re.compile(r"^[0-9]{1,9}$")
+LOGREQ_RE = re.compile(r"^(vhost|wp|php):(50|200|500)$")
 
 
 def _run(command):
@@ -118,13 +124,39 @@ def job(request):
     extra = request.POST.get("extra", "").strip()
     if action not in ACTIONS:
         return JsonResponse({"ok": False, "error": "Unknown action."})
-    if action == "list":
+    if action in ("list", "getsched"):
         domain = ""
     elif domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain."})
     if action == "restore":
         if not FILE_RE.match(extra) or not extra.startswith(domain + "-"):
             return JsonResponse({"ok": False, "error": "Invalid backup name."})
+    elif action == "delbackup":
+        names = [n for n in extra.split(",") if n]
+        if not names or len(names) > 50 or not all(FILE_RE.match(n) and n.startswith(domain + "-") for n in names):
+            return JsonResponse({"ok": False, "error": "Invalid backup selection."})
+        extra = ",".join(names)
+    elif action == "errlog":
+        if not LOGREQ_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid log request."})
+    elif action == "setsched":
+        if not SCHED_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid schedule."})
+    elif action == "pluginop":
+        if not PLUGOP_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid request."})
+    elif action == "maint":
+        if not MAINT_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid option."})
+    elif action == "tidy":
+        if not TIDY_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid option."})
+    elif action == "resetpw":
+        if not UID_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid user."})
+    elif action == "debug":
+        if extra not in ("on", "off", "clear"):
+            return JsonResponse({"ok": False, "error": "Invalid option."})
     elif action == "language":
         if not LOCALE_RE.match(extra):
             return JsonResponse({"ok": False, "error": "Invalid language code."})
@@ -149,7 +181,7 @@ def jobstatus(request):
     nonce = request.POST.get("nonce", "")
     if action not in ACTIONS or not NONCE_RE.match(nonce):
         return JsonResponse({"ok": False, "error": "Bad request."})
-    if action == "list":
+    if action in ("list", "getsched"):
         domain = ""
     elif domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain."})
