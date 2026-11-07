@@ -1,108 +1,131 @@
 # WordPress Toolkit Pro for CyberPanel
 
-A free, open-source plugin for [CyberPanel](https://cyberpanel.net/) (OpenLiteSpeed) that adds a **WordPress manager** to the panel's sidebar: one screen to see all your WordPress sites, log in without a password, update, back up, restore, switch language, move to https, remove, and install new sites.
+**A practical WordPress management toolkit built into CyberPanel.**
 
-> **Status: beta.** Built and used on a single-server setup (Ubuntu 24.04, CyberPanel 3.0.x). Test on a non-critical site first and keep your own server snapshots. See [Limitations](#limitations).
+Manage WordPress installations from one place: inspect sites, run updates, create and restore backups, manage plugins and themes, review logs, and perform common maintenance tasks without leaving CyberPanel.
 
-![WordPress Toolkit Pro dashboard (sample data)](docs/screenshot.png)
+> **Project status: Beta.** Tested on a limited CyberPanel setup. Always take a server snapshot and test on a non-critical site before using it in production. See [Limitations](#limitations).
 
-## Features
+![WordPress Toolkit Pro dashboard](docs/screenshot.png)
 
-| Feature | What it does |
-|---|---|
-| **Site list** | Finds every WordPress install under `/home/*/public_html`; shows WordPress version, language, PHP, SSL and available updates (core / plugins / themes). |
-| **One-click login** | Creates a single-use wp-admin link valid for 2 minutes. No password needed. |
-| **Update** | Safety backup, then core + database + plugins + themes + language packs, then LiteSpeed cache purge. |
-| **Backup** | Database dump + full `public_html` archive (`.tar.gz`), last 7 kept per site. |
-| **Restore** | Restore any backup (also for a site whose WordPress was removed); a safety backup of the current state is taken first. |
-| **Switch to https** | After you issue a certificate in CyberPanel: rewrites `http://` to `https://` in the database and adds an http→https redirect. Refuses self-signed certificates. |
-| **Language** | Switches the WordPress language (core, plugins, themes) and resets per-user languages. |
-| **Remove WP** | Deletes the files, database and DB user of a site (the website stays in CyberPanel). Needs the domain typed as confirmation; a backup is taken first. |
-| **Delete backups** | Remove one or several backups from the list. |
-| **Scheduled backups** | Per-site daily / weekly backups (03:15) and how many to keep. |
-| **Plugins and themes** | Activate, deactivate, update; deactivate all plugins and restore them again (white-screen debugging). |
-| **Error logs** | Web server, `debug.log` and PHP error logs in the panel; switch WordPress debug logging on/off. |
-| **Maintenance mode** | One click on/off (HTTP 503 for visitors). |
-| **File integrity check** | Compares core and wordpress.org plugin files with the official releases. |
-| **Admins and password reset** | Lists administrators and sets a new random password. |
-| **Cache and database cleanup** | Clears caches; removes revisions, spam/trash comments and expired transients. |
-| **Installer** | Installs a fresh WordPress (random DB name/user/password, generated admin password, optional LiteSpeed Cache). Rolls back on failure. |
+## At a glance
+
+- **Manage sites:** discover WordPress installations and review their versions, PHP, SSL and available updates.
+- **Work faster:** open wp-admin with a temporary, single-use login link.
+- **Protect your sites:** create backups, restore a previous state and schedule recurring backups.
+- **Maintain WordPress:** update core, plugins, themes and language packs; clear caches and clean database clutter.
+- **Troubleshoot:** inspect error logs, check file integrity and use maintenance mode.
+- **Install and remove:** install a fresh WordPress site or remove an installation with confirmation and a safety backup.
 
 ## Screenshots
 
-*(Sample data.)*
+The screenshots below are existing feature previews from the project. They illustrate the toolkit's workflows; they are not a claim that every screen reflects the current 3.9.0 Modern Light interface.
 
-| | |
+| Dashboard | Backups & restore |
+|:---:|:---:|
+| ![Dashboard preview](docs/screenshot.png) | ![Backups and restore preview](docs/screenshot-backups.png) |
+| **Language management** | **Safe removal** |
+| ![Language management preview](docs/screenshot-language.png) | ![Remove WordPress preview](docs/screenshot-remove.png) |
+
+## Features
+
+| Area | Capabilities |
 |---|---|
-| ![Dashboard](docs/screenshot.png) | ![Backups and restore](docs/screenshot-backups.png) |
-| ![Change language](docs/screenshot-language.png) | ![Remove WordPress (typed confirmation)](docs/screenshot-remove.png) |
+| Site overview | Finds WordPress installations under /home/*/public_html; displays WordPress version, language, PHP, SSL and available core/plugin/theme updates. |
+| One-click login | Creates a single-use wp-admin link valid for 2 minutes. |
+| Updates | Takes a safety backup, updates WordPress core, database, plugins, themes and language packs, then purges LiteSpeed cache. |
+| Backups | Creates a database dump and full public_html archive (.tar.gz); keeps the latest 7 per site by default. |
+| Restore | Restores a selected backup, including for a site whose WordPress files were removed; takes a safety backup first. |
+| HTTPS | Rewrites site URLs to HTTPS and adds a redirect after a valid certificate has been issued in CyberPanel. |
+| Languages | Changes the WordPress language, including core, plugins and themes. |
+| Plugins and themes | Activate, deactivate and update; temporarily deactivate all plugins for troubleshooting. |
+| Logs and diagnostics | Review available web-server, WordPress and PHP logs and run the toolkit's diagnostic checks. |
+| Maintenance | Toggle maintenance mode, check file integrity, manage administrators and reset passwords. |
+| Cleanup | Clear caches and remove revisions, spam/trash comments and expired transients. |
+| Installer | Installs WordPress with generated database credentials and an admin password; rolls back on failure. |
 
 ## Requirements
 
-* CyberPanel 3.0.x with OpenLiteSpeed, and root SSH access to the server
-* Ubuntu 24.04 (the only setup tested so far)
-* An `lsphp` binary (CyberPanel ships them), MariaDB, `openssl`, `tar`, `flock`
-* [WP-CLI](https://wp-cli.org/) at `/usr/local/bin/wp` (downloaded automatically on first install if missing)
+- CyberPanel 3.0.x with OpenLiteSpeed and root SSH access
+- Ubuntu 24.04 (the currently tested environment)
+- CyberPanel lsphp binary, MariaDB, openssl, tar and flock
+- WP-CLI at /usr/local/bin/wp (downloaded automatically on first install if missing)
 
-## Installation, step by step
+## Installation
 
-You need SSH access to the server as **root**. Take a server snapshot first (e.g. in your hosting provider's control panel).
+Take a server snapshot before installing or updating. Run the commands below as **root**.
 
-**1. Get the zip.** Download `wordpressToolkitPro.zip` from the [latest release](../../releases/latest), or download it directly on the server in step 2 (option A).
+### 1. Download the release ZIP
 
-**2. Put it on the server as `/usr/local/CyberCP/wordpressToolkitPro.zip`.** The file name must be exactly that.
+Place the file at /usr/local/CyberCP/wordpressToolkitPro.zip.
 
-*Option A: download on the server*
 ```bash
 cd /usr/local/CyberCP
 curl -fL -o wordpressToolkitPro.zip \
-  https://github.com/ravxvx/cyberpanel-wordpress-toolkit-pro/releases/latest/download/wordpressToolkitPro.zip
+  https://github.com/ravxvx/cyberpanel-wordpress-toolkit-pr/releases/latest/download/wordpressToolkitPro.zip
 ```
 
-*Option B: upload from your computer* (run on **your** computer, then on the server):
+Alternatively, upload the ZIP from your computer:
+
+```powershell
+scp .\wordpressToolkitPro.zip root@SERVER_IP:/root/wpt.zip
+```
+
+Then, on the server:
+
 ```bash
-scp wordpressToolkitPro.zip root@SERVER_IP:/root/wpt.zip      # on your computer
-cp /root/wpt.zip /usr/local/CyberCP/wordpressToolkitPro.zip   # on the server
+cp /root/wpt.zip /usr/local/CyberCP/wordpressToolkitPro.zip
 ```
 
-**3. Check it is the current version** (should list `wptool.sh`):
+### 2. Check the archive
+
 ```bash
 unzip -l /usr/local/CyberCP/wordpressToolkitPro.zip | grep wptool
 ```
 
-**4. Install:**
+### 3. Install
+
 ```bash
 cd /usr/local/CyberCP
 PYTHONPATH=/usr/local/CyberCP /usr/local/CyberCP/bin/python \
   pluginInstaller/pluginInstaller.py install --pluginName wordpressToolkitPro
-rm -f /usr/local/CyberCP/wordpressToolkitPro.zip /root/wpt.zip
 ```
-The output should end with "Plugin successfully installed". The panel restarts itself a few seconds later.
 
-**5. Open it.** Refresh the panel (Ctrl+F5) and click **WP Toolkit Pro** in the left sidebar (or go to `https://SERVER_IP:8090/wordpressToolkitPro/`). The list of your WordPress sites loads automatically.
+The installer should finish with **Plugin successfully installed**. CyberPanel may restart its panel service a few seconds later.
 
-**Updating:** run `pluginInstaller.py remove --pluginName wordpressToolkitPro`, then repeat steps 2-4 with the new zip. Your sites and backups are not touched. **Removing** and troubleshooting: [docs/INSTALL.md](docs/INSTALL.md), [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+### 4. Open the plugin
+
+Refresh CyberPanel with **Ctrl+F5** and select **WP Toolkit Pro** from the CyberPanel left sidebar, or open:
+
+https://SERVER_IP:8090/wordpressToolkitPro/
+
+## Updating and removing
+
+For the update/removal procedure and troubleshooting steps, see:
+
+- [Installation, update and removal guide](docs/INSTALL.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+Updating the plugin should not remove your WordPress sites or stored backups. Always retain an independent server backup before changing production software.
 
 ## Documentation
 
-* [Installation, update, removal](docs/INSTALL.md)
-* [Using the plugin](docs/USAGE.md)
-* [Troubleshooting](docs/TROUBLESHOOTING.md)
-* [How it works / architecture](docs/ARCHITECTURE.md)
-* [Security notes](SECURITY.md)
-* [Changelog](CHANGELOG.md)
+- [Using the plugin](docs/USAGE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security notes](SECURITY.md)
+- [Changelog](CHANGELOG.md)
 
 ## Limitations
 
-* Only sites with WordPress in `/home/<domain>/public_html` are listed (child/sub-domains created inside another site's `public_html` are not).
-* Backups are stored on the **same server** (`/home/wptoolkit-backups/`). Copy them off-server for real disaster recovery.
-* A CyberPanel upgrade can overwrite the sidebar template and remove the menu link; run `sh /usr/local/CyberCP/wordpressToolkitPro/repair-menu.sh` and `systemctl restart lscpd`.
-* The user interface is in English only.
-* Not affiliated with CyberPanel, LiteSpeed or WordPress.
+- Only WordPress installations under /home/<domain>/public_html are discovered. Child or subdomains installed inside another site's public_html may not appear.
+- Backups are stored on the same server in /home/wptoolkit-backups/. Copy them off-server for disaster recovery.
+- A CyberPanel upgrade may overwrite its sidebar template and remove the plugin menu entry. The menu can be repaired with sh /usr/local/CyberCP/wordpressToolkitPro/repair-menu.sh, followed by systemctl restart lscpd.
+- The interface is currently English-only.
+- This project is independent and is not affiliated with CyberPanel, LiteSpeed or WordPress.
 
 ## Contributing
 
-Issues and pull requests are welcome. Please describe your CyberPanel version, OS and the output shown in the plugin's "Operation log" when reporting a bug. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code layout and `scripts/build-zip.sh` to build a release zip.
+Issues and pull requests are welcome. When reporting a problem, include your CyberPanel version, operating system and the relevant output from the plugin's operation log. See [Architecture](docs/ARCHITECTURE.md) for the code layout and scripts/build-zip.sh for building a release archive.
 
 ## License
 
