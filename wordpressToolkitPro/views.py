@@ -26,6 +26,20 @@ UID_RE = re.compile(r"^[0-9]{1,9}$")
 LOGREQ_RE = re.compile(r"^(vhost|wp|php):(50|200|500)$")
 
 
+
+def _post(request, key, default=""):
+    # WPT_B64: free-text fields arrive base64url-encoded (<key>64) because CyberPanel's
+    # secMiddleware rejects values containing : ; $ & ( ) [ ] { } < > ' before any view runs.
+    raw = request.POST.get(key + "64")
+    if raw is None:
+        return request.POST.get(key, default)
+    try:
+        import base64
+        return base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode("utf-8")
+    except Exception:
+        return default
+
+
 def _run(command):
     # Imported lazily: if CyberPanel moves this module, only the plugin pages break - not every panel page.
     from plogical.processUtilities import ProcessUtilities
@@ -74,7 +88,7 @@ def deploy(request):
     domain = request.POST.get("domain", "").strip().lower()
     login = request.POST.get("login", "").strip()
     mail = request.POST.get("email", "").strip()
-    title = request.POST.get("title", "").strip()[:80]
+    title = _post(request, "title").strip()[:80]
     scheme = request.POST.get("scheme", "auto")
     locale = request.POST.get("locale", "en_US")
     lscache = "1" if request.POST.get("litespeed") == "1" else "0"
@@ -121,7 +135,7 @@ def job(request):
         return _deny()
     action = request.POST.get("action", "")
     domain = request.POST.get("domain", "").strip().lower()
-    extra = request.POST.get("extra", "").strip()
+    extra = _post(request, "extra").strip()
     if action not in ACTIONS:
         return JsonResponse({"ok": False, "error": "Unknown action."})
     if action in ("list", "getsched"):
