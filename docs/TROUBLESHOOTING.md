@@ -14,6 +14,7 @@
 | List shows `?` for update counts | WP-CLI could not reach wordpress.org or the site has a PHP error; run `wp --allow-root --path=/home/<domain>/public_html core check-update` manually. |
 | "another operation is already running" | A job for that site is still running; wait, or check `/var/log/wptoolkit/`. |
 | An operation seems stuck | Read the newest file in `/var/log/wptoolkit/` (`job-<action>-<domain>.log`). |
+| "The server answered HTTP 200 instead of data" or "CyberPanel blocked the request" | CyberPanel's security filter rejected a value containing `: ; $ & ( ) [ ] { } < > '`. Fixed in 3.7.1 (values are sent encoded) - update the plugin. If it says "session expired", reload the page and log in again. |
 | Sites on PHP 8.4/8.5 show plugin errors | Switch the site to PHP 8.3 in CyberPanel (*Manage → Change PHP*). |
 
 Useful commands:

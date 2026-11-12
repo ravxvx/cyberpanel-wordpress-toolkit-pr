@@ -254,11 +254,32 @@
   var busy = false;
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text != null) { e.textContent = text; } return e; }
+  function b64u(s) {
+    s = String(s == null ? '' : s);
+    return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function parseJson(r) {
+    return r.text().then(function (t) {
+      var d = null; try { d = JSON.parse(t); } catch (e) {}
+      if (d && d.ok === undefined && (d.error_message || d.errorMessage)) {
+        throw new Error('CyberPanel blocked the request: ' + (d.error_message || d.errorMessage));
+      }
+      if (d) { return d; }
+      if (r.redirected && /login/i.test(r.url)) {
+        throw new Error('Your panel session has expired - reload the page and log in again.');
+      }
+      throw new Error('The server answered HTTP ' + r.status + ' instead of data: ' +
+        t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200));
+    });
+  }
   function post(url, data) {
     var fd = new FormData(); fd.append('csrfmiddlewaretoken', csrf);
-    Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
+    Object.keys(data).forEach(function (k) {
+      // WPT_B64: CyberPanel blocks : ; $ & ( ) etc. in POST values, so free text is sent base64url-encoded
+      if (k === 'extra' || k === 'title') { fd.append(k + '64', b64u(data[k])); } else { fd.append(k, data[k]); }
+    });
     return fetch(url, {method: 'POST', body: fd, credentials: 'same-origin',
-      headers: {'X-Requested-With': 'XMLHttpRequest'}}).then(function (r) { return r.json(); });
+      headers: {'X-Requested-With': 'XMLHttpRequest'}}).then(parseJson);
   }
   function setBusy(b) { busy = b; document.querySelectorAll('#wptoolkit button').forEach(function (x) { x.disabled = b; }); }
   function msg(type, text) {

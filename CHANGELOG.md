@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.7.1
+* **Fix: scheduled backups, plugin/theme actions, error logs and site titles failed with "The server answered HTTP 200 instead of data".** CyberPanel's security middleware rejects POST values containing `: ; $ & ( ) [ ] { } < > '` and answers with its own HTML response before the plugin runs. Values like `daily:2`, `plugin-update:akismet`, `vhost:200` or a title such as `Shop: Home & Garden` were blocked. The free-text fields `extra` and `title` are now sent base64url-encoded (`extra64` / `title64`) and decoded in `views.py`; validation and the shell side are unchanged.
+* Clearer errors: when the panel answers with something other than plugin data, the dashboard now shows CyberPanel's actual message (or "session expired") instead of a generic error.
+
 ## 3.7.0
 Includes 3.5.0 and 3.6.0.
 * **Delete backups** (one or several, with confirmation); filename is validated and only files of that site can be removed.
