@@ -1,7 +1,7 @@
 #!/bin/bash
 # WordPress Toolkit Pro - management actions, runs as root (started by the panel).
 # Usage: wptool.sh ACTION DOMAIN|- EXTRA|- NONCE
-#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | migrate | speed | speedinfo | serverop | autocache
+#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | migrate | speed | speedinfo | serverop | autocache | selfupdate
 set -uo pipefail
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
@@ -10,7 +10,7 @@ ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
 LOGDIR=/var/log/wptoolkit; BACKUPROOT=/home/wptoolkit-backups
 umask 077
 mkdir -p "$LOGDIR"; chmod 700 "$LOGDIR"
-[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|migrate|speed|speedinfo|serverop|autocache)$ ]] || exit 1
+[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|migrate|speed|speedinfo|serverop|autocache|selfupdate)$ ]] || exit 1
 [[ "$NONCE" =~ ^[0-9a-f]{12}$ ]] || exit 1
 
 # one job of the same kind at a time (a duplicate start simply exits)
@@ -97,6 +97,22 @@ ocache_enable(){   # needs DIR DOMAIN; prints a reason and returns 1 when it can
   lso_set object-kind 1 && lso_set object-host localhost && lso_set object-port 6379 && lso_set object-db_id "$id" \
     && lso_set object-persistent true && lso_set object true || { echo "Could not change LiteSpeed Cache settings."; return 1; }
   purge_cache
+  # health check: if the site breaks with the object cache, switch it off again at once
+  local url code
+  url="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
+  sleep 2
+  code="$(http_code "$url/?wpt_check=$(openssl rand -hex 4)")"
+  echo "Health check: HTTP ${code:-000}"
+  if ! [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+    rm -f "$DIR/wp-content/object-cache.php"
+    lso_set object false
+    purge_cache
+    echo "The site did not answer correctly with the Redis object cache - it was switched OFF again and the site is restored (HTTP $(http_code "$url/?wpt_check=$(openssl rand -hex 4)"))."
+    echo "Last errors:"
+    tail -n 6 "$DIR/wp-content/debug.log" 2>/dev/null | cut -c1-300
+    tail -n 6 "$HOMEDIR/logs/$DOMAIN.error_log" 2>/dev/null | cut -c1-300
+    return 1
+  fi
   echo "Redis object cache is ON (Redis database $id)."
 }
 speed_status(){
@@ -674,6 +690,7 @@ speed)
     redis-off)
       wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active"
       lso_set object false || fail "could not change the setting"
+      rm -f "$DIR/wp-content/object-cache.php"
       purge_cache; echo "Redis object cache is OFF." ;;
     opt-safe|opt-full|opt-off)
       wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active - turn on Redis cache (it installs it) or install the plugin first"
@@ -782,6 +799,65 @@ autocache)
     bash "$SELF" speed "$dom" redis-on "$(openssl rand -hex 6)"
     echo "$dom: $(grep -v -e '^__' -e '^ERROR' "$LOGDIR/job-speed-$dom.log" 2>/dev/null | tail -1)"
   done
+  ok ;;
+
+selfupdate)
+  # Update the Toolkit itself from GitHub (main branch). Files are swapped as a whole directory,
+  # so this running script keeps its old copy open and nothing is half-written.
+  [[ "$EXTRA" =~ ^(check|apply)$ ]] || fail "invalid option"
+  REPO="ravxvx/cyberpanel-wordpress-toolkit-pr"; BRANCH="main"
+  TARGET="$(cd "$PLUGIN_DIR/.." && pwd)"           # /usr/local/CyberCP/wordpressToolkitPro
+  [ -f "$TARGET/meta.xml" ] || fail "cannot find the installed plugin"
+  cur="$(grep -o '<version>[^<]*' "$TARGET/meta.xml" | head -1 | sed 's/<version>//')"
+  latest="$(curl -fsSL --max-time 20 "https://raw.githubusercontent.com/$REPO/$BRANCH/wordpressToolkitPro/meta.xml" 2>/dev/null | grep -o '<version>[^<]*' | head -1 | sed 's/<version>//')"
+  [[ "$latest" =~ ^[0-9]+(\.[0-9]+){1,3}$ ]] || fail "could not read the latest version from GitHub (no internet access from the server?)"
+  newer=no
+  if [ "$cur" != "$latest" ] && [ "$(printf '%s\n%s\n' "$cur" "$latest" | sort -V | tail -1)" = "$latest" ]; then newer=yes; fi
+  echo "UPD|$cur|$latest|$newer"
+  if [ "$EXTRA" = check ]; then
+    if [ "$newer" = yes ]; then
+      echo "Version $latest is available (installed: $cur). What is new:"
+      n=0
+      while IFS= read -r line; do
+        if [[ "$line" =~ ^##\ ([0-9]+(\.[0-9]+)+) ]]; then
+          v="${BASH_REMATCH[1]}"
+          [ "$(printf '%s\n%s\n' "$cur" "$v" | sort -V | tail -1)" = "$v" ] && [ "$v" != "$cur" ] || break
+        fi
+        [[ "$line" =~ ^#\ |^$ ]] && continue
+        echo "CL|$line"; n=$((n+1)); [ "$n" -ge 30 ] && break
+      done < <(curl -fsSL --max-time 20 "https://raw.githubusercontent.com/$REPO/$BRANCH/wordpressToolkitPro/CHANGELOG.md" 2>/dev/null)
+    else
+      echo "You have the newest version ($cur)."
+    fi
+    ok
+  fi
+  [ "$newer" = yes ] || { echo "Nothing to do - $cur is the newest version."; ok; }
+  WORK="$(mktemp -d /root/.wptoolkit-update.XXXXXX)"; trap 'rm -rf "$WORK"' EXIT
+  echo "== Downloading $latest from GitHub =="
+  curl -fsSL --max-time 120 -o "$WORK/src.tar.gz" "https://codeload.github.com/$REPO/tar.gz/refs/heads/$BRANCH" || fail "download failed"
+  tar -xzf "$WORK/src.tar.gz" -C "$WORK" || fail "the download is not a valid archive"
+  NEW="$(find "$WORK" -mindepth 2 -maxdepth 2 -type d -name wordpressToolkitPro | head -1)"
+  [ -n "$NEW" ] && [ -f "$NEW/meta.xml" ] && [ -f "$NEW/views.py" ] && [ -f "$NEW/bin/wptool.sh" ] && [ -f "$NEW/templates/wordpressToolkitPro/dashboard.html" ] || fail "the download does not contain a complete plugin"
+  got="$(grep -o '<version>[^<]*' "$NEW/meta.xml" | head -1 | sed 's/<version>//')"
+  [ "$got" = "$latest" ] || fail "version mismatch in the download ($got, expected $latest)"
+  echo "== Checking the new files =="
+  PY=/usr/local/CyberCP/bin/python; [ -x "$PY" ] || PY="$(command -v python3)"
+  for f in "$NEW"/*.py; do "$PY" -m py_compile "$f" 2>&1 || fail "Python check failed for $(basename "$f") - nothing was changed"; done
+  for f in "$NEW"/bin/*.sh; do bash -n "$f" || fail "shell check failed for $(basename "$f") - nothing was changed"; done
+  find "$NEW" -name __pycache__ -type d -prune -exec rm -rf {} +
+  echo "== Backing up $cur =="
+  BK="/root/wptoolkit-$cur-$(date +%Y%m%d-%H%M%S).tar.gz"
+  tar -czf "$BK" -C "$(dirname "$TARGET")" "$(basename "$TARGET")" || fail "backup failed - nothing was changed"
+  echo "Backup: $BK"
+  echo "== Installing $latest =="
+  STAGE="$TARGET.new.$$"; OLD="$TARGET.old.$$"
+  cp -a "$NEW" "$STAGE" || fail "copy failed - nothing was changed"
+  chown -R --reference="$TARGET" "$STAGE" 2>/dev/null
+  mv "$TARGET" "$OLD" && mv "$STAGE" "$TARGET" || { [ -d "$OLD" ] && [ ! -d "$TARGET" ] && mv "$OLD" "$TARGET"; fail "switching the files failed - the old version was kept"; }
+  rm -rf "$OLD"
+  sh "$TARGET/post_install" 2>&1 | grep -v '^$' | tail -3
+  echo "Toolkit updated: $cur -> $latest. The panel restarts in a few seconds - then reload the page (Ctrl+F5)."
+  echo "To go back: rm -rf $TARGET && tar -xzf $BK -C $(dirname "$TARGET") && systemctl restart lscpd"
   ok ;;
 
 esac

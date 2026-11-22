@@ -45,6 +45,8 @@ It unzips the plugin, registers it in `CyberCP/settings.py` and `CyberCP/urls.py
 
 ## 2. Update
 
+From 4.2.0 on: open **Server & speed → Toolkit updates** and click **Update now** (no SSH needed). The manual way below still works.
+
 The plugin has no migrations or data of its own, so updating is "remove, then install the new zip". Your sites and backups are not touched.
 
 ```bash
