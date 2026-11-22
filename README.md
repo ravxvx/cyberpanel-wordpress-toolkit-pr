@@ -26,6 +26,8 @@ A free, open-source plugin for [CyberPanel](https://cyberpanel.net/) (OpenLiteSp
 | **File integrity check** | Compares core and wordpress.org plugin files with the official releases. |
 | **Admins and password reset** | Lists administrators and sets a new random password. |
 | **Cache and database cleanup** | Clears caches; removes revisions, spam/trash comments and expired transients. |
+| **Speed** | Speed test (response time with and without cache), Redis object cache on/off per site (via LiteSpeed Cache, own Redis database per site), PHP version switch with automatic rollback, LiteSpeed optimization presets (Off / Safe / Full). |
+| **Server & speed** | RAM / CPU / load, one-click Redis installation, redis extension per PHP version, nightly automatic object cache for new sites. |
 | **Installer** | Installs a fresh WordPress (random DB name/user/password, generated admin password, optional LiteSpeed Cache). Rolls back on failure. |
 
 ## Screenshots

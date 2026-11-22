@@ -1,5 +1,21 @@
 # Using the plugin
 
+## Layout (4.0)
+
+Top tabs: **Sites** (list; click a site to manage it), **Backups** (schedules and restore for any website), **Server & speed** and **Install WordPress**. A site has its own tabs: Overview, Plugins & themes, Backups, Speed, Security, Logs, Settings. The operation status and log are in the bar at the bottom ("Show log").
+
+## Speed (per site)
+
+* **Speed test** measures the server response time three times from the page cache and three times without it (what logged-in users get). Under 0.8 s is good, over 2 s is slow.
+* **Redis object cache** turns on LiteSpeed Cache's object cache with Redis (installs LiteSpeed Cache if needed). Each site gets a fixed Redis database number (`/etc/wptoolkit/redis-db.conf`). Needs Redis on the server and the redis extension for the site's PHP version (both in **Server & speed**).
+* **PHP version** switches with `cyberpanel changePHP`, then checks the home page; if it does not answer with 2xx/3xx the previous version is restored.
+* **LiteSpeed optimization**: Safe = minify CSS, JS and HTML; Full = also defer JavaScript (check menus, sliders and forms afterwards).
+
+## Server & speed
+
+RAM, CPU and load (with warnings), Redis status and **Install Redis** (`redis-server` via apt, 256 MB limit, `allkeys-lru`, 64 databases), the redis extension for every installed `lsphp` (**Install** = `apt-get install lsphpXX-redis` + web server restart), and **Automatic cache for new sites** (`/etc/cron.d/wptoolkit-autocache`, 04:40 nightly).
+
+
 Open **WP Toolkit Pro** in the CyberPanel sidebar. The list loads automatically; **Refresh list** scans again. One operation runs at a time; while it runs the buttons are disabled and the **Operation log** shows live output.
 
 ## Site list
