@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0.0
+* **New tabbed layout.** Top tabs: Sites, Backups, Server & speed, Install WordPress. Click a site to open it; each site has its own tabs (Overview, Plugins & themes, Backups, Speed, Security, Logs, Settings), so there are no more per-card site pickers. The operation log is a collapsible bar at the bottom. Links like `#site=example.com&tab=speed` open a site directly.
+* **Speed tab per site:** speed test (server response time from cache and without cache), Redis object cache on/off through LiteSpeed Cache (installed automatically if missing; every site gets its own Redis database), PHP version switch with a health check and automatic rollback, LiteSpeed optimization presets Off / Safe (minify CSS, JS, HTML) / Full (+ deferred JavaScript).
+* **Server & speed tab:** RAM, CPU and load with warnings, Redis status and one-click installation (256 MB limit, LRU, 64 databases), redis extension status and installation per installed PHP version, and an optional nightly job (04:40) that turns on the Redis object cache on sites that have LiteSpeed Cache but not the object cache yet.
+* **Installer:** new option to turn on the Redis object cache right after installing.
+* The site list shows the PHP version read from the site's virtual host.
+
 ## 3.7.0
 Includes 3.5.0 and 3.6.0.
 * **Delete backups** (one or several, with confirmation); filename is validated and only files of that site can be removed.

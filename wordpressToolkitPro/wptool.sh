@@ -1,7 +1,7 @@
 #!/bin/bash
 # WordPress Toolkit Pro - management actions, runs as root (started by the panel).
 # Usage: wptool.sh ACTION DOMAIN|- EXTRA|- NONCE
-#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy
+#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | speed | speedinfo | serverop | autocache
 set -uo pipefail
 ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
 [ "$DOMAIN" = "-" ] && DOMAIN=""
@@ -9,7 +9,7 @@ ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
 LOGDIR=/var/log/wptoolkit; BACKUPROOT=/home/wptoolkit-backups
 umask 077
 mkdir -p "$LOGDIR"; chmod 700 "$LOGDIR"
-[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy)$ ]] || exit 1
+[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|speed|speedinfo|serverop|autocache)$ ]] || exit 1
 [[ "$NONCE" =~ ^[0-9a-f]{12}$ ]] || exit 1
 
 # one job of the same kind at a time (a duplicate start simply exits)
@@ -55,6 +55,66 @@ fix_perms(){
 }
 purge_cache(){ wpd "$DIR" litespeed-purge all --skip-themes >/dev/null 2>&1 || true; }
 
+
+# ---------- speed helpers (Redis object cache, PHP version, LiteSpeed optimization) ----------
+DBMAP=/etc/wptoolkit/redis-db.conf
+redis_up(){ command -v redis-cli >/dev/null 2>&1 && [ "$(redis-cli ping 2>/dev/null)" = "PONG" ]; }
+site_lsphp(){ grep -ho 'lsphp[0-9][0-9]*' "/usr/local/lsws/conf/vhosts/$1/vhost.conf" 2>/dev/null | head -1; }
+phpredis_ok(){ [ -x "/usr/local/lsws/$1/bin/php" ] && "/usr/local/lsws/$1/bin/php" -m 2>/dev/null | grep -qix redis; }
+dotted(){ local v="${1#lsphp}"; echo "${v:0:1}.${v:1}"; }   # lsphp82 -> 8.2
+restart_ls(){ systemctl restart lsws >/dev/null 2>&1 || /usr/local/lsws/bin/lswsctrl restart >/dev/null 2>&1; pkill -f lsphp >/dev/null 2>&1; sleep 3; }
+lso_get(){ wpd "$DIR" litespeed-option get "$1" --skip-themes 2>/dev/null | tail -1; }
+lso_set(){ wpd "$DIR" litespeed-option set "$1" "$2" --skip-themes >/dev/null 2>&1; }
+is_on(){ case "$1" in 1|true|on|yes) return 0;; *) return 1;; esac; }
+redis_db_for(){   # stable Redis database number (1-63) per domain
+  mkdir -p /etc/wptoolkit; chmod 700 /etc/wptoolkit; touch "$DBMAP"; chmod 600 "$DBMAP"
+  (
+    flock 6
+    id="$(awk -F'|' -v d="$1" '$1==d{print $2}' "$DBMAP" | head -1)"
+    if ! [[ "$id" =~ ^[0-9]+$ ]]; then
+      id=""
+      for i in $(seq 1 63); do
+        awk -F'|' -v i="$i" '$2==i{f=1} END{exit !f}' "$DBMAP" || { id="$i"; break; }
+      done
+      [ -n "$id" ] || exit 1
+      echo "$1|$id" >> "$DBMAP"
+    fi
+    echo "$id"
+  ) 6>/var/run/wptoolkit-redisdb.lock
+}
+http_code(){ curl -s -o /dev/null -w '%{http_code}' --max-time 30 -A 'Mozilla/5.0 (WPToolkit health check)' "$1" 2>/dev/null; }
+ocache_enable(){   # needs DIR DOMAIN; prints a reason and returns 1 when it cannot be done
+  redis_up || { echo "Redis is not running on this server - install it in \"Server & speed\" first."; return 1; }
+  local v; v="$(site_lsphp "$DOMAIN")"
+  if [ -n "$v" ] && ! phpredis_ok "$v"; then echo "PHP $(dotted "$v") of this site has no redis extension - install it in \"Server & speed\" first."; return 1; fi
+  if ! wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1; then
+    echo "Installing LiteSpeed Cache..."
+    wpd "$DIR" plugin install litespeed-cache --activate --skip-themes 2>&1 | tail -1
+    fix_perms
+    wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || { echo "LiteSpeed Cache could not be activated."; return 1; }
+  fi
+  local id; id="$(redis_db_for "$DOMAIN")" || { echo "No free Redis database left (1-63)."; return 1; }
+  lso_set object-kind 1 && lso_set object-host localhost && lso_set object-port 6379 && lso_set object-db_id "$id" \
+    && lso_set object-persistent true && lso_set object true || { echo "Could not change LiteSpeed Cache settings."; return 1; }
+  purge_cache
+  echo "Redis object cache is ON (Redis database $id)."
+}
+speed_status(){
+  local v ver oc db js css
+  v="$(site_lsphp "$DOMAIN")"; ver="${v:+$(dotted "$v")}"
+  if [ -n "$v" ] && phpredis_ok "$v"; then echo "SPEED|php|${ver:-?}|yes"; else echo "SPEED|php|${ver:-?}|no"; fi
+  if redis_up; then echo "SPEED|redis|running"; else echo "SPEED|redis|off"; fi
+  if wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1; then
+    echo "SPEED|lscache|active"
+    oc="$(lso_get object)"; db="$(lso_get object-db_id)"
+    if is_on "$oc"; then echo "SPEED|ocache|on|${db:-0}"; else echo "SPEED|ocache|off|-"; fi
+    js="$(lso_get optm-js_defer)"; css="$(lso_get optm-css_min)"
+    if [ "${js:-0}" != "0" ] && is_on "${js:-0}"; then echo "SPEED|opt|full"; elif is_on "${css:-0}"; then echo "SPEED|opt|safe"; else echo "SPEED|opt|off"; fi
+  else
+    echo "SPEED|lscache|missing"; echo "SPEED|ocache|off|-"; echo "SPEED|opt|off"
+  fi
+}
+
 do_backup(){   # prints path of the new archive in BACKUP_FILE
   [ -n "$DBROOT" ] && [ -n "$DUMPBIN" ] || fail "database tools or root password not available"
   mkdir -p "$BACKUPROOT/$DOMAIN"; chmod 700 "$BACKUPROOT" "$BACKUPROOT/$DOMAIN"
@@ -94,7 +154,8 @@ list)
     [[ "$thm" =~ ^[0-9]+$ ]] || thm="?"
     lang="$(wpd "$dir" option get WPLANG --skip-plugins --skip-themes 2>/dev/null | head -1)"
     [[ "$lang" =~ ^[a-z]{2,3}(_[A-Z]{2})?$ ]] || lang="en_US"
-    echo "SITE|$dom|${ver:-?}|$core|$plug|$thm|${url//|/}|$lang"
+    sv="$(site_lsphp "$dom")"
+    echo "SITE|$dom|${ver:-?}|$core|$plug|$thm|${url//|/}|$lang|${sv:+$(dotted "$sv")}"
   done
   ok ;;
 
@@ -496,5 +557,137 @@ uninstall)
   fix_perms
   echo "WordPress removed from $DOMAIN (the website itself stays in CyberPanel; public_html is empty)."
   echo "The last backup is in $BACKUPROOT/$DOMAIN/ - you can restore it from "Restore from backup"."
+  ok ;;
+speed)
+  need_site
+  [[ "$EXTRA" =~ ^(status|test|redis-on|redis-off|opt-safe|opt-full|opt-off|php-(74|80|81|82|83|84|85))$ ]] || fail "invalid option"
+  case "$EXTRA" in
+    status) speed_status ;;
+    test)
+      url="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
+      [[ "$url" =~ ^https?:// ]] || fail "cannot read the site address"
+      echo "Testing $url (3 requests each)..."
+      code="$(http_code "$url/")"; echo "TTFB|code|${code:-000}"
+      t(){ curl -s -o /dev/null -w '%{time_starttransfer}' --max-time 60 -A 'Mozilla/5.0 (WPToolkit speed test)' "$1" 2>/dev/null; }
+      t "$url/" >/dev/null   # warm the page cache
+      sum=0; for i in 1 2 3; do x="$(t "$url/")"; sum="$(awk -v a="$sum" -v b="${x:-0}" 'BEGIN{printf "%.3f", a+b}')"; done
+      cached="$(awk -v s="$sum" 'BEGIN{printf "%.2f", s/3}')"
+      sum=0; for i in 1 2 3; do x="$(t "$url/?wpt_nocache=$(openssl rand -hex 4)")"; sum="$(awk -v a="$sum" -v b="${x:-0}" 'BEGIN{printf "%.3f", a+b}')"; done
+      uncached="$(awk -v s="$sum" 'BEGIN{printf "%.2f", s/3}')"
+      echo "TTFB|cached|$cached"; echo "TTFB|uncached|$uncached"
+      echo "Server response time - from cache: ${cached}s, without cache (what logged-in users get): ${uncached}s."
+      ;;
+    redis-on) ocache_enable || fail "Redis object cache was not enabled." ;;
+    redis-off)
+      wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active"
+      lso_set object false || fail "could not change the setting"
+      purge_cache; echo "Redis object cache is OFF." ;;
+    opt-safe|opt-full|opt-off)
+      wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active - turn on Redis cache (it installs it) or install the plugin first"
+      on=true; defer=0
+      [ "$EXTRA" = opt-off ] && on=false
+      [ "$EXTRA" = opt-full ] && defer=1
+      lso_set optm-css_min "$on" && lso_set optm-js_min "$on" && lso_set optm-html_min "$on" && lso_set optm-js_defer "$defer" || fail "could not change the settings"
+      purge_cache
+      case "$EXTRA" in
+        opt-safe) echo "Optimization: SAFE (CSS, JS and HTML minified).";;
+        opt-full) echo "Optimization: FULL (minified + JavaScript deferred). Check the site - if menus, sliders or forms stop working, switch back to Safe.";;
+        opt-off)  echo "Optimization: OFF.";;
+      esac ;;
+    php-*)
+      new="lsphp${EXTRA#php-}"; old="$(site_lsphp "$DOMAIN")"
+      [ -x "/usr/local/lsws/$new/bin/php" ] || fail "PHP $(dotted "$new") is not installed on this server (install it in CyberPanel: Server > PHP > Install PHP)"
+      [ "$new" != "$old" ] || { echo "The site already uses PHP $(dotted "$new")."; ok; }
+      command -v cyberpanel >/dev/null 2>&1 || fail "cyberpanel command not found"
+      url="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
+      echo "Switching $DOMAIN from PHP ${old:+$(dotted "$old")} to PHP $(dotted "$new")..."
+      cyberpanel changePHP --domainName "$DOMAIN" --php "$(dotted "$new")" 2>&1 | tail -2
+      sleep 4
+      code="$(http_code "$url/")"
+      echo "Health check: HTTP $code"
+      if [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+        phpredis_ok "$new" || echo "Note: PHP $(dotted "$new") has no redis extension yet - install it in \"Server & speed\", otherwise the Redis object cache cannot work."
+        echo "RESULT|PHP|$(dotted "$new")"
+      else
+        if [ -n "$old" ]; then
+          echo "The site does not answer correctly on PHP $(dotted "$new") - switching back to PHP $(dotted "$old")."
+          cyberpanel changePHP --domainName "$DOMAIN" --php "$(dotted "$old")" 2>&1 | tail -1
+          sleep 3; echo "Health check after rollback: HTTP $(http_code "$url/")"
+        fi
+        fail "PHP change rolled back"
+      fi ;;
+  esac
+  ok ;;
+
+speedinfo)
+  if command -v redis-server >/dev/null 2>&1 || [ -f /etc/redis/redis.conf ]; then inst=yes; else inst=no; fi
+  if redis_up; then
+    used="$(redis-cli info memory 2>/dev/null | awk -F: '/^used_memory_human:/{gsub("\r","",$2);print $2}')"
+    maxm="$(redis-cli config get maxmemory 2>/dev/null | tail -1)"
+    echo "REDIS|$inst|yes|${used:-?}|$(( ${maxm:-0} / 1048576 ))"
+  else echo "REDIS|$inst|no|-|0"; fi
+  for d in /usr/local/lsws/lsphp[0-9]*; do
+    [ -x "$d/bin/php" ] || continue
+    v="$(basename "$d")"
+    if phpredis_ok "$v"; then echo "PHPV|$(dotted "$v")|${v#lsphp}|yes"; else echo "PHPV|$(dotted "$v")|${v#lsphp}|no"; fi
+  done
+  mt="$(awk '/^MemTotal:/{print int($2/1024)}' /proc/meminfo)"; ma="$(awk '/^MemAvailable:/{print int($2/1024)}' /proc/meminfo)"
+  echo "SYS|${mt:-0}|${ma:-0}|$(nproc 2>/dev/null || echo 1)|$(cut -d' ' -f1 /proc/loadavg)"
+  if [ -f /etc/cron.d/wptoolkit-autocache ]; then echo "AUTO|on"; else echo "AUTO|off"; fi
+  for cfg in /home/*/public_html/wp-config.php; do
+    [ -e "$cfg" ] || continue
+    dom="$(basename "$(dirname "$(dirname "$cfg")")")"
+    [[ "$dom" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || continue
+    v="$(site_lsphp "$dom")"; echo "SITEPHP|$dom|${v:+$(dotted "$v")}"
+  done
+  ok ;;
+
+serverop)
+  [[ "$EXTRA" =~ ^(redis-install|autocache-on|autocache-off|phpredis-(74|80|81|82|83|84|85))$ ]] || fail "invalid option"
+  case "$EXTRA" in
+    redis-install)
+      command -v apt-get >/dev/null 2>&1 || fail "only Ubuntu/Debian (apt) is supported"
+      echo "== Installing Redis =="
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -q redis-server 2>&1 | tail -3
+      RC=/etc/redis/redis.conf
+      [ -f "$RC" ] || fail "Redis was not installed"
+      sed -i 's/^#\? *databases .*/databases 64/' "$RC"
+      grep -q '^maxmemory ' "$RC" || printf '\n# WordPress Toolkit Pro\nmaxmemory 256mb\nmaxmemory-policy allkeys-lru\n' >> "$RC"
+      systemctl enable redis-server >/dev/null 2>&1; systemctl restart redis-server
+      sleep 1; redis_up || fail "Redis does not answer after the installation"
+      echo "Redis is running (limit: $(redis-cli config get maxmemory | tail -1 | awk '{print int($1/1048576)}') MB of RAM, 64 databases)." ;;
+    phpredis-*)
+      v="lsphp${EXTRA#phpredis-}"
+      [ -x "/usr/local/lsws/$v/bin/php" ] || fail "PHP $(dotted "$v") is not installed"
+      if phpredis_ok "$v"; then echo "PHP $(dotted "$v") already has the redis extension."; ok; fi
+      echo "== Installing ${v}-redis =="
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -q "${v}-redis" 2>&1 | tail -3
+      restart_ls
+      phpredis_ok "$v" || fail "the redis extension is still missing for PHP $(dotted "$v")"
+      echo "PHP $(dotted "$v") now has the redis extension (web server restarted)." ;;
+    autocache-on)
+      SELF="$(readlink -f "$0")"
+      printf '# WordPress Toolkit Pro - Redis object cache for new sites\nSHELL=/bin/bash\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n40 4 * * * root /bin/bash %s autocache - - 000000000000 >/dev/null 2>&1\n' "$SELF" > /etc/cron.d/wptoolkit-autocache
+      chmod 644 /etc/cron.d/wptoolkit-autocache
+      echo "Automatic cache is ON: every night at 04:40 the toolkit turns on the Redis object cache on sites that have LiteSpeed Cache but not the object cache yet." ;;
+    autocache-off)
+      rm -f /etc/cron.d/wptoolkit-autocache
+      echo "Automatic cache is OFF." ;;
+  esac
+  ok ;;
+
+autocache)
+  redis_up || { echo "Redis is not running - nothing to do."; ok; }
+  SELF="$(readlink -f "$0")"
+  for cfg in /home/*/public_html/wp-config.php; do
+    [ -e "$cfg" ] || continue
+    dir="$(dirname "$cfg")"; dom="$(basename "$(dirname "$dir")")"
+    [[ "$dom" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || continue
+    wpd "$dir" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || { echo "$dom: no LiteSpeed Cache - skipped"; continue; }
+    oc="$(wpd "$dir" litespeed-option get object --skip-themes 2>/dev/null | tail -1)"
+    if is_on "$oc"; then echo "$dom: already on"; continue; fi
+    bash "$SELF" speed "$dom" redis-on "$(openssl rand -hex 6)"
+    echo "$dom: $(grep -v -e '^__' -e '^ERROR' "$LOGDIR/job-speed-$dom.log" 2>/dev/null | tail -1)"
+  done
   ok ;;
 esac

@@ -17,13 +17,16 @@ MAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 LOCALE_RE = re.compile(r"^[a-z]{2,3}(_[A-Z]{2})?$")
 NONCE_RE = re.compile(r"^[0-9a-f]{12}$")
 FILE_RE = re.compile(r"^[a-z0-9.-]+-[0-9]{8}-[0-9]{6}\.tar\.gz$")
-ACTIONS = ("list", "login", "update", "backup", "backups", "delbackup", "restore", "ssl", "language", "uninstall", "errlog", "debug", "getsched", "setsched", "plugins", "pluginop", "maint", "verify", "admins", "resetpw", "tidy")
+ACTIONS = ("list", "login", "update", "backup", "backups", "delbackup", "restore", "ssl", "language", "uninstall", "errlog", "debug", "getsched", "setsched", "plugins", "pluginop", "maint", "verify", "admins", "resetpw", "tidy", "speed", "speedinfo", "serverop")
 SCHED_RE = re.compile(r"^(off|daily|weekly):([2-9]|[1-5][0-9]|60)$")
 PLUGOP_RE = re.compile(r"^(plugin-activate|plugin-deactivate|plugin-update|theme-activate|theme-update|plugins-deactivate-all|plugins-restore):([A-Za-z0-9][A-Za-z0-9._-]{0,99}|-)$")
 MAINT_RE = re.compile(r"^(on|off|status)$")
 TIDY_RE = re.compile(r"^(cache|db)$")
 UID_RE = re.compile(r"^[0-9]{1,9}$")
 LOGREQ_RE = re.compile(r"^(vhost|wp|php):(50|200|500)$")
+SPEED_RE = re.compile(r"^(status|test|redis-on|redis-off|opt-safe|opt-full|opt-off|php-(74|80|81|82|83|84|85))$")
+SERVEROP_RE = re.compile(r"^(redis-install|autocache-on|autocache-off|phpredis-(74|80|81|82|83|84|85))$")
+SERVER_ACTIONS = ("list", "getsched", "speedinfo", "serverop")
 
 
 def _run(command):
@@ -78,6 +81,7 @@ def deploy(request):
     scheme = request.POST.get("scheme", "auto")
     locale = request.POST.get("locale", "en_US")
     lscache = "1" if request.POST.get("litespeed") == "1" else "0"
+    redis = "1" if request.POST.get("redis") == "1" and lscache == "1" else "0"
 
     if domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain - create the website in CyberPanel first."})
@@ -88,7 +92,7 @@ def deploy(request):
     if scheme not in ("auto", "http", "https") or not LOCALE_RE.match(locale):
         return JsonResponse({"ok": False, "error": "Invalid options."})
 
-    args = " ".join(shlex.quote(a) for a in (SCRIPT, domain, login, mail, title, lscache, scheme, locale))
+    args = " ".join(shlex.quote(a) for a in (SCRIPT, domain, login, mail, title, lscache, scheme, locale, redis))
     log = "%s/%s.log" % (LOG_DIR, domain)
     inner = "mkdir -p %s && chmod 700 %s && : > %s && chmod 600 %s && setsid nohup bash %s > %s 2>&1 < /dev/null &" % (
         LOG_DIR, LOG_DIR, shlex.quote(log), shlex.quote(log), args, shlex.quote(log))
@@ -124,7 +128,7 @@ def job(request):
     extra = request.POST.get("extra", "").strip()
     if action not in ACTIONS:
         return JsonResponse({"ok": False, "error": "Unknown action."})
-    if action in ("list", "getsched"):
+    if action in SERVER_ACTIONS:
         domain = ""
     elif domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain."})
@@ -163,6 +167,12 @@ def job(request):
     elif action == "uninstall":
         if extra != domain:
             return JsonResponse({"ok": False, "error": "Type the domain name exactly to confirm."})
+    elif action == "speed":
+        if not SPEED_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid option."})
+    elif action == "serverop":
+        if not SERVEROP_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid option."})
     else:
         extra = ""
     nonce = secrets.token_hex(6)
@@ -181,7 +191,7 @@ def jobstatus(request):
     nonce = request.POST.get("nonce", "")
     if action not in ACTIONS or not NONCE_RE.match(nonce):
         return JsonResponse({"ok": False, "error": "Bad request."})
-    if action in ("list", "getsched"):
+    if action in SERVER_ACTIONS:
         domain = ""
     elif domain not in _domains() or not DOMAIN_RE.match(domain):
         return JsonResponse({"ok": False, "error": "Unknown domain."})
