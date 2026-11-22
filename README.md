@@ -26,6 +26,8 @@ A free, open-source plugin for [CyberPanel](https://cyberpanel.net/) (OpenLiteSp
 | **File integrity check** | Compares core and wordpress.org plugin files with the official releases. |
 | **Admins and password reset** | Lists administrators and sets a new random password. |
 | **Cache and database cleanup** | Clears caches; removes revisions, spam/trash comments and expired transients. |
+| **Migration** | Moves a WordPress site from DirectAdmin or any host (browser upload or server folder `/home/wptoolkit-migrations/incoming/`), staged with rollback. |
+| **Diagnostics** | Checks WP-CLI, lsphp, MariaDB, scripts and disk; reads the Toolkit and CyberPanel logs. |
 | **Speed** | Speed test (response time with and without cache), Redis object cache on/off per site (via LiteSpeed Cache, own Redis database per site), PHP version switch with automatic rollback, LiteSpeed optimization presets (Off / Safe / Full). |
 | **Server & speed** | RAM / CPU / load, one-click Redis installation, redis extension per PHP version, nightly automatic object cache for new sites. |
 | **Installer** | Installs a fresh WordPress (random DB name/user/password, generated admin password, optional LiteSpeed Cache). Rolls back on failure. |
@@ -58,7 +60,7 @@ You need SSH access to the server as **root**. Take a server snapshot first (e.g
 ```bash
 cd /usr/local/CyberCP
 curl -fL -o wordpressToolkitPro.zip \
-  https://github.com/ravxvx/cyberpanel-wordpress-toolkit-pro/releases/latest/download/wordpressToolkitPro.zip
+  https://github.com/ravxvx/cyberpanel-wordpress-toolkit-pr/releases/latest/download/wordpressToolkitPro.zip
 ```
 
 *Option B: upload from your computer* (run on **your** computer, then on the server):

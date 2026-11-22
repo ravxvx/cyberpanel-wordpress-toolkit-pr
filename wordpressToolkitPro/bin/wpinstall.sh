@@ -3,7 +3,7 @@
 # Usage: wpinstall.sh DOMAIN WPUSER WPMAIL TITLE LITESPEED(1|0) SCHEME(auto|http|https) LOCALE
 set -uo pipefail
 DOMAIN="${1:-}"; WPUSER="${2:-}"; WPMAIL="${3:-}"; TITLE="${4:-}"
-LSCACHE="${5:-1}"; SCHEME="${6:-auto}"; LOCALE="${7:-en_US}"
+LSCACHE="${5:-1}"; SCHEME="${6:-auto}"; LOCALE="${7:-en_US}"; REDIS="${8:-0}"
 
 done_fail(){ echo "ERROR: $*"; echo "__DONE__ FAIL"; exit 1; }
 
@@ -103,6 +103,13 @@ find "$DIR" -type d -exec chmod 755 {} + 2>/dev/null
 find "$DIR" -type f -exec chmod 644 {} + 2>/dev/null
 chmod 750 "$DIR"
 chmod 640 "$DIR/wp-config.php"
+
+if [ "$LSCACHE" = "1" ] && [ "$REDIS" = "1" ]; then
+  echo "Turning on the Redis object cache (if Redis is available on this server)..."
+  N="$(openssl rand -hex 6)"
+  bash "$(dirname "$(readlink -f "$0")")/wptool.sh" speed "$DOMAIN" redis-on "$N" || true
+  grep -v '^__' "/var/log/wptoolkit/job-speed-$DOMAIN.log" 2>/dev/null | tail -2
+fi
 
 CRED="/root/wp-$DOMAIN.txt"
 umask 077
