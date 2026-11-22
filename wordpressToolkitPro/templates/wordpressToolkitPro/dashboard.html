@@ -2,128 +2,199 @@
 {% block title %}WordPress Toolkit Pro - CyberPanel{% endblock %}
 {% block content %}
 <style>
-#wptoolkit{--bg:#fff;--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--soft:#f3f4f6;--soft2:#f9fafb;--accent:#ea580c;--accent2:#c2410c;--accentbg:#fff7ed;
-  --ok:#166534;--okbg:#dcfce7;--warn:#92400e;--warnbg:#fef3c7;--bad:#991b1b;--badbg:#fee2e2;--info:#1e40af;--infobg:#dbeafe;
-  font-size:14px;padding-bottom:30px}
+#wptoolkit{
+  --ink:#0d231b;--ink2:#143428;--pine:#1d7a5b;--pine-d:#15614a;--mint:#e3f3ea;--mint2:#c7e8d6;
+  --text:#14231d;--muted:#5b6d65;--line:#dbe5df;--soft:#f3f7f4;--card:#ffffff;
+  --ok:#14603f;--okbg:#dcf3e5;--warn:#8a4b06;--warnbg:#fcefd0;--bad:#9f1d12;--badbg:#fde4e1;--info:#1b4b8a;--infobg:#e1ecf9;
+  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;color:var(--text);padding-bottom:48px}
 #wptoolkit *{box-sizing:border-box}
-#wptoolkit code{background:var(--soft);padding:1px 5px;border-radius:4px;font-size:12.5px}
-#wptoolkit .wpt-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:6px 0 16px}
-#wptoolkit .wpt-head h2{margin:0;font-weight:700;color:var(--fg)}
-#wptoolkit .wpt-head p{margin:4px 0 0;color:var(--muted)}
-#wptoolkit .wpt-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
-#wptoolkit .wpt-stat{background:var(--bg);border-radius:12px;padding:12px 16px;box-shadow:0 1px 3px rgba(0,0,0,.12);border-left:4px solid var(--accent)}
-#wptoolkit .wpt-stat b{display:block;font-size:24px;line-height:1.15;color:var(--fg)}
-#wptoolkit .wpt-stat span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-#wptoolkit .wpt-stat.s-good{border-left-color:#16a34a} #wptoolkit .s-badb{border-left-color:#dc2626}
-#wptoolkit .wpt-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 16px;overflow-x:auto;scrollbar-width:none}
-#wptoolkit .wpt-tabs button{appearance:none;background:none;border:0;border-bottom:3px solid transparent;padding:11px 16px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;display:inline-flex;gap:8px;align-items:center;margin-bottom:-1px}
-#wptoolkit .wpt-tabs button:hover{color:var(--fg)}
-#wptoolkit .wpt-tabs button.on{color:var(--accent2);border-bottom-color:var(--accent)}
-#wptoolkit .wpt-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
-#wptoolkit .wpt-subtabs button{appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
-#wptoolkit .wpt-subtabs button:hover{border-color:var(--accent)}
-#wptoolkit .wpt-subtabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-#wptoolkit .wpt-pane{display:none} #wptoolkit .wpt-pane.on{display:block}
-#wptoolkit .wpt-card{background:var(--bg);color:var(--fg);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.12);margin-bottom:16px;overflow:hidden}
-#wptoolkit .wpt-card>.wpt-title{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);font-size:15px;font-weight:600;color:var(--fg);margin:0}
-#wptoolkit .wpt-title small{font-weight:400;color:var(--muted);font-size:12.5px}
-#wptoolkit .wpt-body{padding:16px 18px}
+#wptoolkit code{background:var(--soft);color:var(--ink2);padding:1px 6px;border-radius:5px;font-size:12.5px}
+
+/* ---- hero: the one bold element ---- */
+#wptoolkit .wpt-hero{position:relative;overflow:hidden;border-radius:20px;margin:8px 0 14px;padding:28px 30px 26px;color:#e9f6ef;
+  background:
+    linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px) 0 0/34px 34px,
+    linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px) 0 0/34px 34px,
+    radial-gradient(900px 300px at 85% -20%,rgba(61,220,151,.28),transparent 60%),
+    linear-gradient(135deg,var(--ink) 0%,var(--ink2) 100%);
+  box-shadow:0 14px 40px rgba(5,20,15,.35);display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:end}
+#wptoolkit .wpt-hero h2{margin:0;font-size:32px;line-height:1.05;font-weight:750;letter-spacing:-1px;color:#fff}
+#wptoolkit .wpt-hero p{margin:10px 0 0;max-width:46ch;color:#a9c7b9;font-size:14px;line-height:1.55}
+#wptoolkit .wpt-pro-mark{display:inline-block;vertical-align:middle;margin-left:8px;padding:4px 8px;border-radius:7px;background:#3ddc97;color:#06281b;font-size:11px;font-weight:800;letter-spacing:.04em}
+#wptoolkit .wpt-hero-actions{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+#wptoolkit .wpt-live{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;color:#8fe3bd;font-size:12.5px;font-weight:600}
+#wptoolkit .wpt-live i{width:8px;height:8px;border-radius:50%;background:#3ddc97;box-shadow:0 0 0 5px rgba(61,220,151,.16)}
+#wptoolkit .wpt-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#wptoolkit .wpt-stat{border-radius:14px;padding:14px 16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(2px)}
+#wptoolkit .wpt-stat b{display:block;font-size:34px;line-height:1;font-weight:750;color:#fff;letter-spacing:-1.2px;font-variant-numeric:tabular-nums}
+#wptoolkit .wpt-stat span{display:block;margin-top:7px;color:#a9c7b9;font-size:12px;line-height:1.3}
+#wptoolkit .wpt-stat.hot b{color:#ffd37a}
+
+/* ---- tabs ---- */
+#wptoolkit .wpt-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:6px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+#wptoolkit .wpt-tab{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:0;border-radius:10px;background:transparent;color:#bcd6c9;font-size:13.5px;font-weight:600;cursor:pointer;transition:background .15s,color .15s}
+#wptoolkit .wpt-tab:hover{background:rgba(255,255,255,.09);color:#fff}
+#wptoolkit .wpt-tab.on{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#wptoolkit .wpt-tab:focus-visible,#wptoolkit .wpt-btn:focus-visible,#wptoolkit .wpt-input:focus-visible{outline:3px solid #3ddc97;outline-offset:2px}
+#wptoolkit .wpt-pane{display:none}
+#wptoolkit[data-tab="sites"] .wpt-pane[data-pane="sites"],#wptoolkit[data-tab="backups"] .wpt-pane[data-pane="backups"],
+#wptoolkit[data-tab="migrate"] .wpt-pane[data-pane="migrate"],#wptoolkit[data-tab="plugins"] .wpt-pane[data-pane="plugins"],
+#wptoolkit[data-tab="tools"] .wpt-pane[data-pane="tools"],#wptoolkit[data-tab="logs"] .wpt-pane[data-pane="logs"],
+#wptoolkit[data-tab="install"] .wpt-pane[data-pane="install"]{display:block}
+
+/* ---- cards ---- */
+#wptoolkit .wpt-card{background:var(--card);color:var(--text);border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 1px 2px rgba(10,30,22,.06),0 8px 24px rgba(10,30,22,.07)}
+#wptoolkit .wpt-card>.wpt-title,#wptoolkit details.wpt-card>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 22px;margin:0;font-size:16px;font-weight:700;letter-spacing:-.2px;color:var(--ink);list-style:none;background:linear-gradient(180deg,#f7fbf8,#fff);border-bottom:1px solid var(--line)}
+#wptoolkit .wpt-title .wpt-ico{display:inline-grid;place-items:center;width:30px;height:30px;margin-right:10px;border-radius:9px;background:var(--mint);color:var(--pine-d);font-size:13px}
+#wptoolkit .wpt-title>span:first-child{display:inline-flex;align-items:center}
+#wptoolkit details.wpt-card>summary{cursor:pointer}
+#wptoolkit details.wpt-card>summary::-webkit-details-marker{display:none}
+#wptoolkit details.wpt-card>summary:after{content:"\f078";font-family:"Font Awesome 5 Free","Font Awesome 6 Free";font-weight:900;font-size:12px;color:var(--muted);transition:transform .2s}
+#wptoolkit details.wpt-card[open]>summary:after{transform:rotate(180deg)}
+#wptoolkit .wpt-body{padding:20px 22px}
 #wptoolkit .wpt-scroll{overflow-x:auto}
+#wptoolkit .wpt-lead{margin:0 0 14px;color:var(--muted);line-height:1.55;max-width:90ch}
+#wptoolkit .wpt-muted{color:var(--muted)}
+
+/* ---- tables ---- */
 #wptoolkit table.wpt-table{width:100%;border-collapse:collapse;background:transparent;margin:0}
-#wptoolkit .wpt-table th{background:var(--soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:600;text-align:left;padding:9px 14px;border:0;white-space:nowrap}
-#wptoolkit .wpt-table td{padding:12px 14px;border:0;border-top:1px solid var(--line);vertical-align:middle;color:var(--fg);background:transparent}
-#wptoolkit .wpt-table tr.wpt-click{cursor:pointer}
-#wptoolkit .wpt-table tr.wpt-click:hover td{background:var(--accentbg)}
-#wptoolkit a.wpt-domain{font-weight:600;color:var(--fg);text-decoration:none}
-#wptoolkit a.wpt-domain:hover{color:var(--accent2)}
-#wptoolkit .wpt-sub{display:block;color:var(--muted);font-size:12px;margin-top:2px}
-#wptoolkit .wpt-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;margin:1px 4px 1px 0;white-space:nowrap}
-#wptoolkit .b-ok{background:var(--okbg);color:var(--ok)} #wptoolkit .b-warn{background:var(--warnbg);color:var(--warn)}
-#wptoolkit .b-bad{background:var(--badbg);color:var(--bad)} #wptoolkit .b-info{background:var(--infobg);color:var(--info)}
+#wptoolkit .wpt-table th{background:var(--soft);color:var(--muted);font-size:12.5px;font-weight:650;text-align:left;padding:11px 16px;border:0;white-space:nowrap}
+#wptoolkit .wpt-table td{padding:15px 16px;border:0;border-top:1px solid var(--line);vertical-align:middle;color:var(--text);background:transparent}
+#wptoolkit .wpt-table tbody tr:hover td{background:#f8fcf9}
+#wptoolkit .wpt-table a.wpt-domain{font-weight:700;font-size:15px;color:var(--ink);text-decoration:none;border-bottom:2px solid var(--mint2)}
+#wptoolkit .wpt-table a.wpt-domain:hover{color:var(--pine-d);border-bottom-color:var(--pine)}
+#wptoolkit .wpt-sub{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+#wptoolkit .wpt-empty{padding:30px;text-align:center;color:var(--muted)}
+#wptoolkit .wpt-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:650;margin:1px 4px 1px 0;white-space:nowrap}
+#wptoolkit .b-ok{background:var(--okbg);color:var(--ok)}#wptoolkit .b-warn{background:var(--warnbg);color:var(--warn)}
+#wptoolkit .b-bad{background:var(--badbg);color:var(--bad)}#wptoolkit .b-info{background:var(--infobg);color:var(--info)}
 #wptoolkit .b-gray{background:var(--soft);color:var(--muted)}
+
+/* ---- buttons & fields ---- */
 #wptoolkit .wpt-actions{display:flex;flex-wrap:wrap;gap:6px}
-#wptoolkit .wpt-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-#wptoolkit .wpt-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;line-height:1.2;transition:all .12s;text-decoration:none}
-#wptoolkit .wpt-btn:hover{border-color:var(--accent);color:var(--accent2)}
-#wptoolkit .wpt-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-#wptoolkit .wpt-btn.primary:hover{background:var(--accent2);border-color:var(--accent2);color:#fff}
-#wptoolkit .wpt-btn.warn{background:var(--warnbg);border-color:#fcd34d;color:var(--warn)}
+#wptoolkit .wpt-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);font-size:13px;font-weight:650;cursor:pointer;line-height:1.2;transition:background .12s,border-color .12s,transform .08s}
+#wptoolkit .wpt-btn:hover{border-color:var(--pine);background:var(--mint);color:var(--pine-d)}
+#wptoolkit .wpt-btn:active{transform:translateY(1px)}
+#wptoolkit .wpt-btn.primary{background:var(--pine);border-color:var(--pine);color:#fff}
+#wptoolkit .wpt-btn.primary:hover{background:var(--pine-d);border-color:var(--pine-d);color:#fff}
+#wptoolkit .wpt-btn.ghost-light{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);color:#e9f6ef}
+#wptoolkit .wpt-btn.ghost-light:hover{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.4)}
+#wptoolkit .wpt-btn.warn{background:var(--warnbg);border-color:#f2cf86;color:var(--warn)}
 #wptoolkit .wpt-btn.ok{background:#16a34a;border-color:#16a34a;color:#fff}
-#wptoolkit .wpt-btn.danger{color:#b91c1c;border-color:#fecaca}
-#wptoolkit .wpt-btn.danger:hover{border-color:#dc2626;color:#991b1b;background:#fef2f2}
-#wptoolkit .wpt-btn.danger.solid{background:#dc2626;border-color:#dc2626;color:#fff}
+#wptoolkit .wpt-btn.danger{color:var(--bad);border-color:#f3bdb7}
+#wptoolkit .wpt-btn.danger:hover{background:var(--badbg);border-color:#d9534a;color:var(--bad)}
+#wptoolkit .wpt-btn.danger.solid{background:#c0392b;border-color:#c0392b;color:#fff}
+#wptoolkit .wpt-btn.danger.solid:hover{background:#a32c20;color:#fff}
 #wptoolkit .wpt-btn[disabled]{opacity:.5;cursor:not-allowed}
-#wptoolkit .wpt-back{background:none;border:0;color:var(--muted);font-weight:600;cursor:pointer;padding:0;font-size:13px}
-#wptoolkit .wpt-back:hover{color:var(--accent2)}
-#wptoolkit .wpt-sitehead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:8px 0 14px}
-#wptoolkit .wpt-sitehead h3{margin:0 0 4px;font-size:21px;font-weight:700;color:var(--fg)}
-#wptoolkit .wpt-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
-#wptoolkit .wpt-info>div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--soft2)}
-#wptoolkit .wpt-info small{display:block;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-#wptoolkit .wpt-info b{font-size:15px;color:var(--fg)}
-#wptoolkit .wpt-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
-#wptoolkit .wpt-grid2>.wpt-card{margin-bottom:0}
-#wptoolkit .wpt-help{color:var(--muted);font-size:13px;line-height:1.5;margin:8px 0 0}
-#wptoolkit .wpt-seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-#wptoolkit .wpt-seg button{border:0;background:#fff;padding:8px 14px;font-weight:600;font-size:13px;cursor:pointer;color:var(--fg);border-right:1px solid var(--line)}
-#wptoolkit .wpt-seg button:last-child{border-right:0}
-#wptoolkit .wpt-seg button.on{background:var(--accent);color:#fff}
-#wptoolkit .wpt-meter{display:flex;align-items:center;gap:10px;margin:8px 0}
-#wptoolkit .wpt-meter span{width:150px;color:var(--muted);font-size:13px}
-#wptoolkit .wpt-meter i.bar{flex:1;height:10px;background:var(--soft);border-radius:99px;overflow:hidden;display:block}
-#wptoolkit .wpt-meter i.bar>em{display:block;height:100%;border-radius:99px}
-#wptoolkit .wpt-meter b{width:60px;text-align:right}
-#wptoolkit .wpt-danger{border:1px solid #fecaca}
-#wptoolkit .wpt-danger>.wpt-title{color:#991b1b;background:#fef2f2}
-#wptoolkit .wpt-modal{position:fixed;inset:0;background:rgba(15,23,42,.6);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
-#wptoolkit .wpt-modal-box{background:#fff;color:var(--fg);border-radius:14px;max-width:460px;width:100%;padding:22px 24px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
-#wptoolkit .wpt-modal-box h3{margin:0 0 12px;font-size:18px;font-weight:700;color:var(--fg)}
-#wptoolkit .wpt-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-#wptoolkit .wpt-modal-note{color:var(--bad);font-size:13px;margin-top:8px;min-height:18px}
-#wptoolkit .wpt-status{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-weight:500;flex:1;min-width:0}
+#wptoolkit .wpt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px 18px}
+#wptoolkit .wpt-field label{display:block;font-size:13px;font-weight:650;color:var(--ink);margin-bottom:6px}
+#wptoolkit .wpt-input{width:100%;min-height:40px;padding:9px 12px;border:1px solid #cddbd3;border-radius:10px;background:#fff;color:var(--text);font-size:14px;height:auto;box-shadow:none}
+#wptoolkit .wpt-input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px rgba(29,122,91,.16)}
+#wptoolkit .wpt-check{display:flex;align-items:center;gap:9px;margin-top:10px;color:var(--text);font-weight:500}
+#wptoolkit .wpt-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ---- status, log ---- */
+#wptoolkit .wpt-status{display:flex;align-items:center;gap:10px;padding:11px 15px;border-radius:12px;margin-bottom:12px;font-weight:550}
 #wptoolkit .wpt-status:empty{display:none}
-#wptoolkit .s-ok{background:var(--okbg);color:var(--ok)} #wptoolkit .s-bad{background:var(--badbg);color:var(--bad)}
-#wptoolkit .s-info{background:var(--infobg);color:var(--info)} #wptoolkit .s-warn{background:var(--warnbg);color:var(--warn)}
+#wptoolkit .s-ok{background:var(--okbg);color:var(--ok)}#wptoolkit .s-bad{background:var(--badbg);color:var(--bad)}
+#wptoolkit .s-info{background:var(--infobg);color:var(--info)}#wptoolkit .s-warn{background:var(--warnbg);color:var(--warn)}
 #wptoolkit .wpt-spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;display:inline-block;animation:wptspin .7s linear infinite;flex:none}
 @keyframes wptspin{to{transform:rotate(360deg)}}
-#wptoolkit pre.wpt-log{margin:0;max-height:320px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:0}
-#wptoolkit .wpt-opbar{position:sticky;bottom:0;z-index:50;background:var(--bg);border-radius:12px 12px 0 0;box-shadow:0 -4px 18px rgba(0,0,0,.12);margin-top:10px}
-#wptoolkit .wpt-opbar-top{display:flex;align-items:center;gap:10px;padding:10px 14px}
-#wptoolkit .wpt-opbar-top .wpt-idle{color:var(--muted);flex:1}
-#wptoolkit .wpt-opbar .wpt-log{border-radius:0;max-height:260px}
+#wptoolkit pre.wpt-log{margin:0;max-height:360px;overflow:auto;background:#0b1a14;color:#d3ecdf;padding:16px;border-radius:12px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-word;border:1px solid #17352a}
+#wptoolkit .wpt-loginbox{margin-top:14px;border:1px solid var(--mint2);background:var(--mint);border-radius:12px;padding:14px}
+
+/* ---- migration ---- */
+#wptoolkit .wpt-ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:6px 0 4px}
+#wptoolkit .wpt-way{border:1px solid var(--line);border-radius:14px;padding:16px 18px;background:var(--soft)}
+#wptoolkit .wpt-way.pick{background:var(--mint);border-color:var(--mint2)}
+#wptoolkit .wpt-way h4{margin:0 0 4px;font-size:14.5px;font-weight:700;color:var(--ink)}
+#wptoolkit .wpt-way p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.5}
+#wptoolkit .wpt-steps{margin:0 0 16px;padding-left:20px;color:var(--muted);line-height:1.7}
+#wptoolkit .wpt-steps b{color:var(--ink)}
+
+/* ---- modal ---- */
+#wptoolkit .wpt-modal{position:fixed;inset:0;background:rgba(6,20,15,.65);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
+#wptoolkit .wpt-modal-box{background:#fff;color:var(--text);border-radius:18px;max-width:480px;width:100%;padding:24px 26px;box-shadow:0 24px 70px rgba(0,0,0,.45)}
+#wptoolkit .wpt-modal-box h3{margin:0 0 12px;font-size:18px;font-weight:750;color:var(--ink)}
+#wptoolkit .wpt-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+#wptoolkit .wpt-modal-note{color:var(--bad);font-size:13px;margin-top:8px;min-height:18px}
+
+@media(max-width:860px){#wptoolkit .wpt-hero{grid-template-columns:1fr;padding:22px 18px}#wptoolkit .wpt-hero h2{font-size:26px}}
+@media(max-width:560px){#wptoolkit .wpt-stats{grid-template-columns:1fr 1fr 1fr;gap:8px}#wptoolkit .wpt-stat{padding:11px}#wptoolkit .wpt-stat b{font-size:26px}
+  #wptoolkit .wpt-tab{padding:8px 11px;font-size:13px}#wptoolkit .wpt-body{padding:16px}}
+@media(prefers-reduced-motion:reduce){#wptoolkit *{transition:none!important;animation-duration:.01ms!important}}
+
+/* ---- 4.1: site-first layout, speed ---- */
+#wptoolkit .wpt-tabs,#wptoolkit .wpt-subtabs{background:linear-gradient(135deg,var(--ink) 0%,var(--ink2) 100%)!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 6px 18px rgba(5,20,15,.18)}
+#wptoolkit .wpt-stats{grid-template-columns:repeat(2,1fr)}
+#wptoolkit .wpt-stat.good b{color:#7ef0bd} #wptoolkit .wpt-stat.badv b{color:#ffb4a8}
+#wptoolkit .wpt-pane.on{display:block}
+#wptoolkit .wpt-title small{font-weight:500;color:var(--muted);font-size:12.5px;letter-spacing:0}
+#wptoolkit .wpt-back{display:inline-flex;align-items:center;gap:8px;background:var(--ink2);border:0;color:#d6ece1;font-weight:650;cursor:pointer;padding:8px 14px;border-radius:10px;font-size:13px;margin-bottom:12px}
+#wptoolkit .wpt-back:hover{color:#fff;background:var(--pine-d)}
+#wptoolkit .wpt-sitehead{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:18px 22px}
+#wptoolkit .wpt-sitehead h3{margin:0 0 6px;font-size:22px;font-weight:750;letter-spacing:-.4px;color:var(--ink)}
+#wptoolkit .wpt-sitehead h3 a{color:var(--ink);text-decoration:none;border-bottom:2px solid var(--mint2)}
+#wptoolkit .wpt-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px;padding:6px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+#wptoolkit .wpt-subtabs button{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:0;border-radius:10px;background:transparent;color:#bcd6c9;font-size:13px;font-weight:600;cursor:pointer}
+#wptoolkit .wpt-subtabs button:hover{background:rgba(255,255,255,.09);color:#fff}
+#wptoolkit .wpt-subtabs button.on{background:#3ddc97;color:#06281b}
+#wptoolkit .wpt-table tr.wpt-click{cursor:pointer}
+#wptoolkit span.wpt-domain{font-weight:700;font-size:15px;color:var(--ink);border-bottom:2px solid var(--mint2)}
+#wptoolkit .wpt-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+#wptoolkit .wpt-info>div{border:1px solid var(--line);border-radius:12px;padding:11px 13px;background:var(--soft)}
+#wptoolkit .wpt-info small{display:block;color:var(--muted);font-size:12px;font-weight:600;margin-bottom:4px}
+#wptoolkit .wpt-info b{font-size:15px;color:var(--ink)}
+#wptoolkit .wpt-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-bottom:16px}
+#wptoolkit .wpt-grid2>.wpt-card{margin-bottom:0}
+#wptoolkit .wpt-help{color:var(--muted);font-size:13px;line-height:1.55;margin:10px 0 0}
+#wptoolkit .wpt-seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+#wptoolkit .wpt-seg button{border:0;background:#fff;padding:9px 16px;font-weight:650;font-size:13px;cursor:pointer;color:var(--ink);border-right:1px solid var(--line)}
+#wptoolkit .wpt-seg button:last-child{border-right:0}
+#wptoolkit .wpt-seg button.on{background:var(--pine);color:#fff}
+#wptoolkit .wpt-meter{display:flex;align-items:center;gap:10px;margin:9px 0}
+#wptoolkit .wpt-meter span{width:170px;color:var(--muted);font-size:13px}
+#wptoolkit .wpt-meter i.bar{flex:1;height:10px;background:var(--soft);border-radius:99px;overflow:hidden;display:block;border:1px solid var(--line)}
+#wptoolkit .wpt-meter i.bar>em{display:block;height:100%;border-radius:99px;width:0}
+#wptoolkit .wpt-meter b{width:62px;text-align:right;font-variant-numeric:tabular-nums}
+#wptoolkit .wpt-danger{border-color:#f3bdb7}
+#wptoolkit .wpt-danger>.wpt-title{background:linear-gradient(180deg,#fff3f1,#fff);color:var(--bad)}
 #wptoolkit .wpt-fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 18px}
-#wptoolkit .wpt-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
-#wptoolkit .wpt-input{width:100%;padding:8px 11px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:var(--fg);font-size:14px;height:auto;box-shadow:none}
-#wptoolkit select.wpt-input{width:auto;min-width:150px}
-#wptoolkit .wpt-fgrid select.wpt-input{width:100%}
-#wptoolkit .wpt-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(234,88,12,.15)}
-#wptoolkit .wpt-check{display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--fg)}
-#wptoolkit .wpt-muted{color:var(--muted)}
-#wptoolkit .wpt-empty{padding:24px;text-align:center;color:var(--muted)}
+#wptoolkit select.wpt-input.auto{width:auto;min-width:160px}
+#wptoolkit .wpt-opbar{position:sticky;bottom:0;z-index:50;margin-top:8px;border-radius:16px 16px 0 0;background:var(--card);border:1px solid var(--line);box-shadow:0 -8px 30px rgba(5,20,15,.25)}
+#wptoolkit .wpt-opbar-top{display:flex;align-items:center;gap:10px;padding:10px 14px}
+#wptoolkit .wpt-opbar .wpt-status{margin:0;flex:1;min-width:0}
+#wptoolkit .wpt-opbar .wpt-idle{flex:1;color:var(--muted);display:inline-flex;align-items:center;gap:8px}
+#wptoolkit .wpt-opbar pre.wpt-log{border-radius:0;max-height:280px;border-left:0;border-right:0;border-bottom:0}
+@media(max-width:560px){#wptoolkit .wpt-meter span{width:110px}#wptoolkit .wpt-sitehead{padding:16px}}
 </style>
 
 <div class="container" id="wptoolkit">
   {% csrf_token %}
-  <div class="wpt-head">
+  <header class="wpt-hero">
     <div>
-      <h2>WordPress Toolkit Pro</h2>
-      <p>All WordPress sites on this server in one place.</p>
+      <div class="wpt-live"><i></i> This server is managed by the Toolkit</div>
+      <h2>WordPress Toolkit <span class="wpt-pro-mark">PRO</span></h2>
+      <p>Update, back up, move, speed up and repair every WordPress site on this server from one screen.</p>
+      <div class="wpt-hero-actions">
+        <button type="button" id="wptRefresh" class="wpt-btn ghost-light"><i class="fas fa-arrows-rotate"></i> Refresh list</button>
+        <button type="button" class="wpt-btn ghost-light" data-jump="migrate"><i class="fas fa-right-left"></i> Move a site here</button>
+      </div>
     </div>
-    <button type="button" id="wptRefresh" class="wpt-btn"><i class="fas fa-arrows-rotate"></i> Refresh</button>
-  </div>
+    <div class="wpt-stats">
+      <div class="wpt-stat"><b id="stSites">–</b><span>WordPress sites</span></div>
+      <div class="wpt-stat hot"><b id="stUpd">–</b><span>Updates available</span></div>
+      <div class="wpt-stat"><b id="stSsl">–</b><span>Sites without SSL</span></div>
+      <div class="wpt-stat" id="stRedisBox"><b id="stRedis">–</b><span>Redis cache</span></div>
+    </div>
+  </header>
 
-  <div class="wpt-stats">
-    <div class="wpt-stat"><b id="stSites">–</b><span>WordPress sites</span></div>
-    <div class="wpt-stat"><b id="stUpd">–</b><span>Updates available</span></div>
-    <div class="wpt-stat"><b id="stSsl">–</b><span>Without SSL</span></div>
-    <div class="wpt-stat" id="stRedisBox"><b id="stRedis">–</b><span>Redis cache</span></div>
-  </div>
-
-  <nav class="wpt-tabs" id="wptMainTabs">
-    <button type="button" data-main="sites" class="on"><i class="fas fa-globe"></i> Sites</button>
-    <button type="button" data-main="backups"><i class="fas fa-clock-rotate-left"></i> Backups</button>
-    <button type="button" data-main="server"><i class="fas fa-gauge-high"></i> Server &amp; speed</button>
-    <button type="button" data-main="install"><i class="fas fa-plus"></i> Install WordPress</button>
+  <nav class="wpt-tabs" id="wptMainTabs" role="tablist" aria-label="Toolkit sections">
+    <button type="button" class="wpt-tab on" data-main="sites" role="tab"><i class="fas fa-globe"></i> Sites</button>
+    <button type="button" class="wpt-tab" data-main="backups" role="tab"><i class="fas fa-floppy-disk"></i> Backups</button>
+    <button type="button" class="wpt-tab" data-main="migrate" role="tab"><i class="fas fa-right-left"></i> Migrate</button>
+    <button type="button" class="wpt-tab" data-main="server" role="tab"><i class="fas fa-gauge-high"></i> Server &amp; speed</button>
+    <button type="button" class="wpt-tab" data-main="install" role="tab"><i class="fas fa-circle-plus"></i> New WordPress</button>
   </nav>
 
   <!-- ============ SITES ============ -->
@@ -142,14 +213,16 @@
 
     <div id="wptSiteView" style="display:none">
       <button type="button" class="wpt-back" id="wptBack"><i class="fas fa-arrow-left"></i> All sites</button>
-      <div class="wpt-sitehead">
-        <div>
-          <h3 id="sDomain"></h3>
-          <div id="sBadges"></div>
+      <section class="wpt-card">
+        <div class="wpt-sitehead">
+          <div>
+            <h3 id="sDomain"></h3>
+            <div id="sBadges"></div>
+          </div>
+          <div class="wpt-actions" id="sQuick"></div>
         </div>
-        <div class="wpt-actions" id="sQuick"></div>
-      </div>
-      <div id="wptLoginBox" style="display:none;margin-bottom:14px"></div>
+        <div class="wpt-body" id="wptLoginBox" style="display:none;padding-top:0"></div>
+      </section>
       <nav class="wpt-subtabs" id="wptSubTabs">
         <button type="button" data-sub="overview" class="on"><i class="fas fa-house"></i> Overview</button>
         <button type="button" data-sub="plugins"><i class="fas fa-puzzle-piece"></i> Plugins &amp; themes</button>
@@ -213,7 +286,7 @@
           <div class="wpt-card">
             <div class="wpt-title">PHP version <span id="sPhpBadge"></span></div>
             <div class="wpt-body">
-              <div class="wpt-row"><select class="wpt-input" id="sPhpSel"></select><button type="button" class="wpt-btn primary" id="sPhpSet"><i class="fas fa-code-branch"></i> Change</button></div>
+              <div class="wpt-row"><select class="wpt-input auto" id="sPhpSel"></select><button type="button" class="wpt-btn primary" id="sPhpSet"><i class="fas fa-code-branch"></i> Change</button></div>
               <p class="wpt-help">Newer PHP is faster. After the change the site is checked; if it does not answer, the old version comes back automatically.</p>
             </div>
           </div>
@@ -249,12 +322,12 @@
           <div class="wpt-title">Error logs</div>
           <div class="wpt-body">
             <div class="wpt-row">
-              <select class="wpt-input" id="wptLogSrc">
+              <select class="wpt-input auto" id="wptLogSrc">
                 <option value="vhost">Web server error log (500 errors, PHP fatals)</option>
                 <option value="wp">WordPress debug.log</option>
                 <option value="php">PHP error_log (site folder)</option>
               </select>
-              <select class="wpt-input" id="wptLogLines" style="min-width:110px"><option value="50">last 50</option><option value="200" selected>last 200</option><option value="500">last 500</option></select>
+              <select class="wpt-input auto" id="wptLogLines" style="min-width:110px"><option value="50">last 50</option><option value="200" selected>last 200</option><option value="500">last 500</option></select>
               <button type="button" class="wpt-btn primary" id="wptLogView"><i class="fas fa-file-lines"></i> View</button>
               <span style="flex:1"></span>
               <button type="button" class="wpt-btn" data-dbg="on"><i class="fas fa-bug"></i> Debug on</button>
@@ -318,7 +391,7 @@
       <div class="wpt-title">Restore from backup <small>Also for sites where WordPress was removed</small></div>
       <div class="wpt-body">
         <div class="wpt-row">
-          <select class="wpt-input" id="wptRestoreDomain">
+          <select class="wpt-input auto" id="wptRestoreDomain">
             {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}
           </select>
           <button type="button" class="wpt-btn" id="wptShowBackups"><i class="fas fa-clock-rotate-left"></i> Show backups</button>
@@ -327,6 +400,46 @@
       </div>
       <div class="wpt-scroll" id="gBkWrap" style="display:none"><table class="wpt-table" id="gBkTable"><thead><tr><th style="width:32px"><input type="checkbox" class="wpt-bkall" title="Select all"></th><th>File</th><th>Size</th><th>Date</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
+  </section>
+
+  <!-- ===== Migrate ===== -->
+  <section class="wpt-pane" data-pane="migrate">
+    <section class="wpt-card" id="wptMigrateCard">
+      <div class="wpt-title"><span><span class="wpt-ico"><i class="fas fa-right-left"></i></span>Migrate a site to this server</span></div>
+      <div class="wpt-body">
+        <p class="wpt-lead">Moves one WordPress site from DirectAdmin (or any host) onto a website you already created in CyberPanel. The Toolkit builds the new site next to the old one and only switches when everything is ready, so a failed run changes nothing.</p>
+        <ol class="wpt-steps">
+          <li>In DirectAdmin, create a backup of the site. The archive must contain <code>wp-config.php</code> and one database dump (<code>.sql</code> or <code>.sql.gz</code>), and only one WordPress.</li>
+          <li>Create the website in CyberPanel (same domain, or a test domain).</li>
+          <li>Choose the archive below, start the migration and check the result before you change DNS.</li>
+        </ol>
+        <div class="wpt-grid" style="margin-bottom:6px">
+          <div class="wpt-field"><label for="wptMigrateDomain">Destination website</label>
+            <select class="wpt-input" id="wptMigrateDomain">{% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% empty %}<option value="">(no websites)</option>{% endfor %}</select>
+          </div>
+        </div>
+        <label class="wpt-check"><input type="checkbox" id="wptMigrateConfirm"> I understand that the destination website's files and database are replaced (the old files are kept in a <code>.wpt-previous-…</code> folder).</label>
+
+        <div class="wpt-ways" style="margin-top:16px">
+          <div class="wpt-way pick">
+            <h4>From a server folder <span class="wpt-badge b-ok">Best for big sites</span></h4>
+            <p>Copy the archive to <code>/home/wptoolkit-migrations/incoming/</code> with SFTP or <code>scp</code>, then pick it here. No browser upload limits.</p>
+            <div class="wpt-row" style="margin-bottom:10px">
+              <select class="wpt-input" id="wptMigrateLocal" style="flex:1;min-width:200px"><option value="">(no archives found)</option></select>
+              <button type="button" class="wpt-btn" id="wptMigrateLocalRefresh" title="Look for new files"><i class="fas fa-arrows-rotate"></i></button>
+            </div>
+            <button type="button" class="wpt-btn primary" id="wptMigrateLocalStart"><i class="fas fa-play"></i> Migrate this archive</button>
+          </div>
+          <div class="wpt-way">
+            <h4>Upload from this browser</h4>
+            <p>ZIP, TAR, TAR.GZ or TGZ up to 2 GB. Large uploads can be cut off by the web server, so use the server folder for anything over a few hundred MB.</p>
+            <input class="wpt-input" type="file" id="wptMigrateFile" accept=".zip,.tar,.gz,.tgz" style="margin-bottom:10px" />
+            <button type="button" class="wpt-btn primary" id="wptMigrateStart"><i class="fas fa-upload"></i> Upload and migrate</button>
+          </div>
+        </div>
+        <p class="wpt-muted" style="margin:14px 0 0">The Toolkit creates a dedicated database, imports the dump, updates the database login and the site address, and replaces the old <code>.htaccess</code> with a clean one. Test the site with your hosts file before pointing DNS here.</p>
+      </div>
+    </section>
   </section>
 
   <!-- ============ SERVER & SPEED ============ -->
@@ -360,6 +473,29 @@
         </div>
       </div>
     </div>
+    <section class="wpt-card" id="wptDiagnosticsCard">
+      <div class="wpt-title"><span><span class="wpt-ico"><i class="fas fa-stethoscope"></i></span>Toolkit diagnostics</span><span class="wpt-badge b-info">Read-only</span></div>
+      <div class="wpt-body">
+        <p class="wpt-lead" style="margin-bottom:12px">Checks that the Toolkit itself is healthy (PHP, WP-CLI, MariaDB, scripts, free disk) and lets you read its own logs. Nothing is changed on the server.</p>
+        <div class="wpt-actions" style="margin-bottom:14px">
+          <button type="button" class="wpt-btn primary" id="wptRunDiagnostics"><i class="fas fa-play"></i> Run diagnostics</button>
+          <button type="button" class="wpt-btn" id="wptLoadToolkitLog"><i class="fas fa-file-lines"></i> Show selected log</button>
+          <button type="button" class="wpt-btn" id="wptLoadCyberLog"><i class="fas fa-server"></i> CyberPanel error log</button>
+        </div>
+        <div id="wptDiagSummary" class="wpt-status s-info" role="status">Diagnostics have not been run yet.</div>
+        <div class="wpt-scroll"><table class="wpt-table" id="wptDiagTable"><thead><tr><th>Check</th><th>Result</th><th>Details</th></tr></thead>
+        <tbody><tr><td colspan="3" class="wpt-empty">Click "Run diagnostics" to check this server.</td></tr></tbody></table></div>
+        <div class="wpt-grid" style="margin-top:16px">
+          <div class="wpt-field"><label for="wptSystemLogName">Toolkit log file</label>
+            <select class="wpt-input" id="wptSystemLogName"><option value="plugin-errors.log">plugin-errors.log (panel errors)</option><option value="error.log">CyberPanel error.log</option></select></div>
+          <div class="wpt-field"><label for="wptSystemLogLines">Lines to show</label>
+            <select class="wpt-input" id="wptSystemLogLines"><option>50</option><option selected>150</option><option>300</option></select></div>
+        </div>
+        <pre class="wpt-log" id="wptSystemLogOutput" style="margin-top:12px;min-height:90px">No log loaded.</pre>
+        <p class="wpt-muted" style="margin:10px 0 0">Administrator-only. Output is size-limited and common passwords and tokens are masked; still read it before sharing.</p>
+      </div>
+    </section>
+
   </section>
 
   <!-- ============ INSTALL ============ -->
@@ -394,10 +530,10 @@
   <div class="wpt-opbar">
     <div class="wpt-opbar-top">
       <div id="wptResult" class="wpt-status"></div>
-      <span class="wpt-idle" id="wptIdle">No operation running.</span>
+      <span class="wpt-idle" id="wptIdle"><i class="fas fa-terminal"></i> Activity: nothing is running.</span>
       <button type="button" class="wpt-btn" id="wptLogToggle"><i class="fas fa-terminal"></i> <span>Show log</span></button>
     </div>
-    <pre id="wptLog" class="wpt-log" style="display:none">No operation running.</pre>
+    <pre id="wptLog" class="wpt-log" style="display:none">Nothing is running.</pre>
   </div>
 
   <div class="wpt-modal" id="wptModal">
@@ -416,7 +552,8 @@
 (function () {
   var URLS = {
     deploy: "{% url 'wordpressToolkitProDeploy' %}", status: "{% url 'wordpressToolkitProStatus' %}",
-    job: "{% url 'wordpressToolkitProJob' %}", jobstatus: "{% url 'wordpressToolkitProJobStatus' %}"
+    job: "{% url 'wordpressToolkitProJob' %}", jobstatus: "{% url 'wordpressToolkitProJobStatus' %}", migrate: "{% url 'wordpressToolkitProMigrateUpload' %}",
+    migrateFiles: "{% url 'wordpressToolkitProMigrateFiles' %}", diagnostics: "{% url 'wordpressToolkitProDiagnostics' %}", systemLogs: "{% url 'wordpressToolkitProSystemLogs' %}"
   };
   var META = {}; try { META = JSON.parse(document.getElementById('wptMeta').textContent) || {}; } catch (e) {}
   var root = document.getElementById('wptoolkit');
@@ -427,20 +564,35 @@
 
   /* ---------- helpers ---------- */
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text != null) { e.textContent = text; } return e; }
+  function b64u(v) {
+    v = String(v == null ? '' : v);
+    return btoa(unescape(encodeURIComponent(v))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function parseJson(r) {
+    return r.text().then(function (t) {
+      var d = null; try { d = JSON.parse(t); } catch (e) {}
+      if (d && d.ok === undefined && (d.error_message || d.errorMessage)) { throw new Error('CyberPanel blocked the request: ' + (d.error_message || d.errorMessage)); }
+      if (d) { return d; }
+      if (r.redirected && /login/i.test(r.url)) { throw new Error('Your panel session has expired - reload the page and log in again.'); }
+      throw new Error('The server answered HTTP ' + r.status + ' instead of data: ' + t.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200));
+    });
+  }
   function post(url, data) {
     var fd = new FormData(); fd.append('csrfmiddlewaretoken', csrf);
-    Object.keys(data).forEach(function (k) { fd.append(k, data[k]); });
-    return fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
-      .then(function (r) { return r.json(); });
+    Object.keys(data).forEach(function (k) {
+      // WPT_B64: CyberPanel blocks : ; $ & ( ) etc. in POST values, so free text is sent base64url-encoded
+      if (k === 'extra' || k === 'title') { fd.append(k + '64', b64u(data[k])); } else { fd.append(k, data[k]); }
+    });
+    return fetch(url, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}}).then(parseJson);
   }
-  function setBusy(b) { busy = b; root.querySelectorAll('button').forEach(function (x) { if (x.id !== 'wptLogToggle' && !x.hasAttribute('data-main') && !x.hasAttribute('data-sub') && x.id !== 'wptBack') { x.disabled = b; } }); }
+  function setBusy(b) { busy = b; root.querySelectorAll('button').forEach(function (x) { if (x.id !== 'wptLogToggle' && !x.hasAttribute('data-main') && !x.hasAttribute('data-sub') && !x.hasAttribute('data-jump') && x.id !== 'wptBack' && x.id !== 'wptModalCancel') { x.disabled = b; } }); }
   function msg(type, text) {
     resEl.className = 'wpt-status s-' + type; resEl.innerHTML = ''; idleEl.style.display = 'none';
     if (type === 'info') { resEl.appendChild(el('span', 'wpt-spin')); }
     resEl.appendChild(el('span', '', text));
   }
   function showLog(open) { logEl.style.display = open ? 'block' : 'none'; $('wptLogToggle').querySelector('span').textContent = open ? 'Hide log' : 'Show log'; }
-  function show(text) { logEl.textContent = text; logEl.scrollTop = logEl.scrollHeight; }
+  function show(text) { logEl.textContent = text; logEl.scrollTop = logEl.scrollHeight; if (logEl.style.display === 'none') { showLog(true); } }
   function btn(label, icon, cls, fn) {
     var b = el('button', 'wpt-btn ' + cls); b.type = 'button';
     b.appendChild(el('i', 'fas ' + icon)); b.appendChild(document.createTextNode(' ' + label));
@@ -452,7 +604,7 @@
   function confirmed(text) { return !text || window.confirm(text); }
 
   function runJob(action, domain, extra, quiet) {
-    if (!quiet) { show('Starting...'); showLog(true); }
+    if (!quiet) { show('Starting...'); }
     return post(URLS.job, {action: action, domain: domain || '', extra: extra || ''}).then(function (d) {
       if (!d.ok) { throw new Error(d.error || 'Error'); }
       return new Promise(function (resolve, reject) {
@@ -486,8 +638,9 @@
   function mainTab(name) {
     root.querySelectorAll('#wptMainTabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-main') === name); });
     root.querySelectorAll('.wpt-pane').forEach(function (p) { p.classList.toggle('on', p.getAttribute('data-pane') === name); });
-    if (name === 'server') { loadServer(); }
+    if (name === 'server') { loadServer(); loadLogNames(); }
     if (name === 'backups') { loadSched(); }
+    if (name === 'migrate') { loadLocalFiles(); }
     if (name !== 'sites' || !SITE) { setHash(name === 'sites' ? '' : name); }
   }
   function subTab(name) {
@@ -502,6 +655,7 @@
   root.querySelectorAll('#wptMainTabs button').forEach(function (b) { b.addEventListener('click', function () { if (b.getAttribute('data-main') === 'sites') { closeSite(); } mainTab(b.getAttribute('data-main')); }); });
   root.querySelectorAll('#wptSubTabs button').forEach(function (b) { b.addEventListener('click', function () { subTab(b.getAttribute('data-sub')); }); });
   $('wptBack').addEventListener('click', function () { closeSite(); setHash(''); });
+  root.querySelectorAll('[data-jump]').forEach(function (b) { b.addEventListener('click', function () { closeSite(); mainTab(b.getAttribute('data-jump')); window.scrollTo({top: 0, behavior: 'smooth'}); }); });
   $('wptLogToggle').addEventListener('click', function () { showLog(logEl.style.display === 'none'); });
 
   /* ---------- site list ---------- */
@@ -873,7 +1027,7 @@
       lines(r.log, 'PHPV').forEach(function (p) { SRV.phps.push({v: p[1], code: p[2], redis: p[3]}); });
       var running = redis[2] === 'yes';
       $('stRedis').textContent = running ? 'Running' : (redis[1] === 'yes' ? 'Stopped' : 'Not installed');
-      $('stRedisBox').className = 'wpt-stat ' + (running ? 's-good' : 's-badb');
+      $('stRedisBox').className = 'wpt-stat ' + (running ? 'good' : 'badv');
       var rb = $('svRedisBadge'); rb.innerHTML = ''; rb.appendChild(running ? badge('ok', 'Running') : badge('bad', redis[1] === 'yes' ? 'Stopped' : 'Not installed'));
       var ri = $('svRedis'); ri.innerHTML = '';
       function item(box, label, value, color) { var d = el('div'); d.appendChild(el('small', '', label)); var v = el('b', '', value); if (color) { v.style.color = color; } d.appendChild(v); box.appendChild(d); }
@@ -940,12 +1094,125 @@
     loadList().then(function () { if (root.querySelector('[data-pane="server"].on')) { loadServer(); } });
   });
 
+  // ---- migration: shared polling, upload and server-folder sources ----
+  function pollMigrate(domain, nonce) {
+    var tries = 0;
+    (function poll() {
+      post(URLS.jobstatus, {action: 'migrate', domain: domain, nonce: nonce}).then(function (st) {
+        if (!st.ok) { throw new Error(st.error || 'Migration status error'); }
+        if (st.started) { show(st.log); }
+        if (st.done) {
+          msg(st.success ? 'ok' : 'bad', st.success ? 'Migration finished. Check the website before you switch DNS.' : 'Migration failed. The old site was not changed - read the Activity log below.');
+          setBusy(false); if (st.success) { loadList(); } loadLocalFiles(); return;
+        }
+        if (++tries > 3600) { throw new Error('Migration is taking longer than expected. Read /var/log/wptoolkit/job-migrate-' + domain + '.log'); }
+        setTimeout(poll, 2000);
+      }).catch(function (err) { msg('bad', err.message); setBusy(false); });
+    })();
+  }
+  function migrateReady() {
+    var domain = document.getElementById('wptMigrateDomain').value;
+    if (!domain) { msg('warn', 'Choose the destination website first.'); return ''; }
+    if (!document.getElementById('wptMigrateConfirm').checked) { msg('warn', 'Tick the box to confirm that the destination website may be replaced.'); return ''; }
+    return domain;
+  }
+  function loadLocalFiles() {
+    var sel = document.getElementById('wptMigrateLocal');
+    return post(URLS.migrateFiles, {}).then(function (d) {
+      if (!d.ok) { throw new Error(d.error || 'Could not list the folder'); }
+      sel.innerHTML = '';
+      if (!d.files.length) { var o = el('option', '', '(no archives in ' + d.folder + ')'); o.value = ''; sel.appendChild(o); return; }
+      d.files.forEach(function (f) {
+        var o = el('option', '', f.name + '  -  ' + (f.size / 1048576).toFixed(1) + ' MB'); o.value = f.name; sel.appendChild(o);
+      });
+    }).catch(function (e) { sel.innerHTML = ''; var o = el('option', '', e.message); o.value = ''; sel.appendChild(o); });
+  }
+  document.getElementById('wptMigrateLocalRefresh').addEventListener('click', function () { loadLocalFiles(); });
+  document.getElementById('wptMigrateLocalStart').addEventListener('click', function () {
+    if (busy) { return; }
+    var domain = migrateReady(), name = document.getElementById('wptMigrateLocal').value;
+    if (!domain) { return; }
+    if (!name) { msg('warn', 'Copy an archive to /home/wptoolkit-migrations/incoming/ and press refresh.'); return; }
+    if (!window.confirm('Migrate ' + name + ' to ' + domain + '? The destination files and database will be replaced (the old files are kept).')) { return; }
+    setBusy(true); show('Starting migration...'); msg('info', 'Migrating ' + name + ' to ' + domain + '...');
+    post(URLS.job, {action: 'migrate', domain: domain, extra: 'local:' + name}).then(function (d) {
+      if (!d.ok) { throw new Error(d.error || 'Could not start the migration'); }
+      pollMigrate(domain, d.nonce);
+    }).catch(function (err) { msg('bad', err.message); setBusy(false); });
+  });
+  document.getElementById('wptMigrateStart').addEventListener('click', function () {
+    if (busy) { return; }
+    var domain = migrateReady(), file = document.getElementById('wptMigrateFile').files[0];
+    if (!domain) { return; }
+    if (!file) { msg('warn', 'Choose a backup archive to upload.'); return; }
+    if (!window.confirm('Upload ' + file.name + ' and migrate it to ' + domain + '? The destination files and database will be replaced.')) { return; }
+    setBusy(true); show('Uploading backup...'); msg('info', 'Uploading ' + file.name + '...');
+    var fd = new FormData(); fd.append('csrfmiddlewaretoken', csrf); fd.append('domain', domain); fd.append('backup', file);
+    fetch(URLS.migrate, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+      .then(parseJson).then(function (d) {
+        if (!d.ok) { throw new Error(d.error || 'Upload failed'); }
+        msg('info', 'Upload received. Migrating ' + domain + '...');
+        pollMigrate(domain, d.nonce);
+      }).catch(function (err) { msg('bad', err.message + ' For big files use "From a server folder".'); setBusy(false); });
+  });
+
+  // System diagnostics and allowlisted log viewer
+  function renderDiagnostics(data) {
+    var body = document.querySelector('#wptDiagTable tbody'); body.innerHTML = '';
+    (data.checks || []).forEach(function (item) {
+      var tr = document.createElement('tr');
+      var name = document.createElement('td'); name.textContent = item.name;
+      var status = document.createElement('td'); var badge = document.createElement('span');
+      badge.className = 'wpt-badge ' + (item.status === 'ok' ? 'b-ok' : (item.status === 'error' ? 'b-bad' : 'b-warn'));
+      badge.textContent = {ok: 'OK', warning: 'Warning', error: 'Error'}[item.status] || item.status; status.appendChild(badge);
+      var detail = document.createElement('td'); detail.textContent = item.detail;
+      tr.appendChild(name); tr.appendChild(status); tr.appendChild(detail); body.appendChild(tr);
+    });
+    var summary = data.summary || {}, box = document.getElementById('wptDiagSummary');
+    box.className = 'wpt-status ' + (summary.errors ? 's-bad' : (summary.warnings ? 's-warn' : 's-ok'));
+    box.textContent = 'Checked ' + (summary.total || 0) + ' items: ' + (summary.errors || 0) +
+      ' errors, ' + (summary.warnings || 0) + ' warnings. ' + (data.checked_at || '');
+  }
+  document.getElementById('wptRunDiagnostics').addEventListener('click', function () {
+    var button = this; button.disabled = true;
+    post(URLS.diagnostics, {}).then(function (data) {
+      if (!data.ok) { throw new Error(data.error || 'Diagnostics failed'); }
+      renderDiagnostics(data);
+      msg(data.summary.errors ? 'bad' : (data.summary.warnings ? 'warn' : 'ok'), 'Diagnostics completed.');
+    }).catch(function (err) { msg('bad', err.message); }).then(function () { button.disabled = false; });
+  });
+  function loadSystemLog(source, name) {
+    var output = document.getElementById('wptSystemLogOutput'); output.textContent = 'Loading log...';
+    post(URLS.systemLogs, {source: source, name: name, lines: document.getElementById('wptSystemLogLines').value})
+      .then(function (data) {
+        if (!data.ok) { throw new Error(data.error || 'Could not read log'); }
+        output.textContent = data.log || data.message || '(empty)'; msg('ok', data.message || 'Log loaded.');
+      }).catch(function (err) { output.textContent = ''; msg('bad', err.message); });
+  }
+  document.getElementById('wptLoadToolkitLog').addEventListener('click', function () {
+    var name = document.getElementById('wptSystemLogName').value;
+    loadSystemLog(name === 'error.log' ? 'cyberpanel' : 'toolkit', name);
+  });
+  document.getElementById('wptLoadCyberLog').addEventListener('click', function () { loadSystemLog('cyberpanel', 'error.log'); });
+
+  function loadLogNames() {
+    var sel = document.getElementById('wptSystemLogName'), keep = sel.value;
+    post(URLS.systemLogs, {source: 'list', name: '', lines: '50'}).then(function (d) {
+      if (!d.ok) { return; }
+      sel.innerHTML = '';
+      d.files.forEach(function (n) { var o = el('option', '', n); o.value = n; sel.appendChild(o); });
+      var c = el('option', '', 'CyberPanel error.log'); c.value = 'error.log'; sel.appendChild(c);
+      if (keep) { sel.value = keep; }
+    }).catch(function () {});
+  }
+
+
   /* ---------- start ---------- */
   var h = location.hash.replace(/^#/, ''), hp = {};
   h.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) { hp[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); } else if (kv) { hp[kv] = true; } });
   loadList().then(function () { return loadServer(true); }).then(function () {
     if (hp.site && SITES[hp.site]) { openSite(hp.site, hp.tab); }
-    else if (hp.backups) { mainTab('backups'); } else if (hp.server) { mainTab('server'); } else if (hp.install) { mainTab('install'); }
+    else if (hp.backups) { mainTab('backups'); } else if (hp.migrate) { mainTab('migrate'); } else if (hp.server) { mainTab('server'); } else if (hp.install) { mainTab('install'); }
   });
 })();
 </script>

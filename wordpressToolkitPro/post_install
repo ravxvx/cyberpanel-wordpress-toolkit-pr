@@ -1,7 +1,9 @@
 #!/bin/sh
-chmod 755 /usr/local/CyberCP/wordpressToolkitPro/wpinstall.sh /usr/local/CyberCP/wordpressToolkitPro/wptool.sh /usr/local/CyberCP/wordpressToolkitPro/repair-menu.sh 2>/dev/null
+chmod 755 /usr/local/CyberCP/wordpressToolkitPro/bin/wpinstall.sh /usr/local/CyberCP/wordpressToolkitPro/bin/wptool.sh /usr/local/CyberCP/wordpressToolkitPro/bin/repair-menu.sh 2>/dev/null
+chmod 750 /usr/local/CyberCP/wordpressToolkitPro/bin/migrate_extract.py 2>/dev/null
+mkdir -p /home/wptoolkit-migrations/incoming && chmod 700 /home/wptoolkit-migrations /home/wptoolkit-migrations/incoming
 mkdir -p /var/log/wptoolkit && chmod 700 /var/log/wptoolkit
-sh /usr/local/CyberCP/wordpressToolkitPro/repair-menu.sh
+sh /usr/local/CyberCP/wordpressToolkitPro/bin/repair-menu.sh
 # the panel caches templates: restart it a moment after the installer finishes
 ( sleep 3; systemctl restart lscpd ) >/dev/null 2>&1 &
 echo "WordPress Toolkit Pro installed. Panel restarts in a few seconds - refresh with Ctrl+F5."

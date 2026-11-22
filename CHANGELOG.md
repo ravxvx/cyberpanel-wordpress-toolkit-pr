@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.1.0
+Built on the production 3.10.1 (migration, diagnostics, green design), which is now also the code on GitHub.
+
+### New layout
+- **Site first.** The *Sites* tab lists all sites; click one to open it with its own tabs: Overview, Plugins & themes, Backups, Speed, Security, Logs, Settings. The separate Plugins, Maintenance and Logs tabs with their own site pickers are gone.
+- Top tabs: Sites, Backups (schedules and restore for any website), Migrate (unchanged), Server & speed (server status, Redis, PHP versions, automatic cache and the Toolkit diagnostics and logs), New WordPress.
+- Activity is a sticky bar at the bottom that opens its log while something runs. Deep links such as `#site=example.com&tab=speed` open a site directly.
+
+### Speed
+- Per site: speed test (server response time from the page cache and without it), Redis object cache on/off via LiteSpeed Cache (installs it if missing; every site gets its own Redis database), PHP version switch with a health check and automatic rollback, LiteSpeed optimization presets Off / Safe / Full.
+- Server: RAM, CPU and load with warnings, one-click Redis installation (256 MB, `allkeys-lru`, 64 databases), the redis extension for every installed lsphp, and an optional nightly job (04:40) that turns on the object cache on sites that have LiteSpeed Cache but not the object cache yet.
+- Installer: option to turn on the Redis object cache right after installing.
+
+
 ## 4.0.0
 * **New tabbed layout.** Top tabs: Sites, Backups, Server & speed, Install WordPress. Click a site to open it; each site has its own tabs (Overview, Plugins & themes, Backups, Speed, Security, Logs, Settings), so there are no more per-card site pickers. The operation log is a collapsible bar at the bottom. Links like `#site=example.com&tab=speed` open a site directly.
 * **Speed tab per site:** speed test (server response time from cache and without cache), Redis object cache on/off through LiteSpeed Cache (installed automatically if missing; every site gets its own Redis database), PHP version switch with a health check and automatic rollback, LiteSpeed optimization presets Off / Safe (minify CSS, JS, HTML) / Full (+ deferred JavaScript).

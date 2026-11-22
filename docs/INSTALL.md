@@ -9,7 +9,7 @@ All commands are run **on the server as root** (SSH) unless stated otherwise.
 ```bash
 cd /usr/local/CyberCP
 curl -fL -o wordpressToolkitPro.zip \
-  https://github.com/ravxvx/cyberpanel-wordpress-toolkit-pro/releases/latest/download/wordpressToolkitPro.zip
+  https://github.com/ravxvx/cyberpanel-wordpress-toolkit-pr/releases/latest/download/wordpressToolkitPro.zip
 PYTHONPATH=/usr/local/CyberCP /usr/local/CyberCP/bin/python \
   pluginInstaller/pluginInstaller.py install --pluginName wordpressToolkitPro
 rm -f /usr/local/CyberCP/wordpressToolkitPro.zip
@@ -79,7 +79,7 @@ This removes the plugin, its registration and the sidebar link. It does **not** 
 Some CyberPanel versions do not contain the marker the installer uses, and upgrades overwrite the template. Re-add the link (this also replaces an older link with the safe form):
 
 ```bash
-sh /usr/local/CyberCP/wordpressToolkitPro/repair-menu.sh
+sh /usr/local/CyberCP/wordpressToolkitPro/bin/repair-menu.sh
 systemctl restart lscpd
 ```
 

@@ -1,15 +1,16 @@
 #!/bin/bash
 # WordPress Toolkit Pro - management actions, runs as root (started by the panel).
 # Usage: wptool.sh ACTION DOMAIN|- EXTRA|- NONCE
-#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | speed | speedinfo | serverop | autocache
+#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | migrate | speed | speedinfo | serverop | autocache
 set -uo pipefail
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
 [ "$DOMAIN" = "-" ] && DOMAIN=""
 [ "$EXTRA" = "-" ] && EXTRA=""
 LOGDIR=/var/log/wptoolkit; BACKUPROOT=/home/wptoolkit-backups
 umask 077
 mkdir -p "$LOGDIR"; chmod 700 "$LOGDIR"
-[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|speed|speedinfo|serverop|autocache)$ ]] || exit 1
+[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|migrate|speed|speedinfo|serverop|autocache)$ ]] || exit 1
 [[ "$NONCE" =~ ^[0-9a-f]{12}$ ]] || exit 1
 
 # one job of the same kind at a time (a duplicate start simply exits)
@@ -54,7 +55,6 @@ fix_perms(){
   chmod 750 "$DIR"
 }
 purge_cache(){ wpd "$DIR" litespeed-purge all --skip-themes >/dev/null 2>&1 || true; }
-
 
 # ---------- speed helpers (Redis object cache, PHP version, LiteSpeed optimization) ----------
 DBMAP=/etc/wptoolkit/redis-db.conf
@@ -412,6 +412,99 @@ resetpw)
   echo "Password changed and the user was logged out everywhere."
   ok ;;
 
+migrate)
+  [[ "$DOMAIN" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || fail "invalid destination domain"
+  UPLOADROOT=/home/wptoolkit-migrations; INCOMING="$UPLOADROOT/incoming"
+  KEEP_ARCHIVE=0
+  if [[ "$EXTRA" =~ ^[0-9a-f]{32}$ ]]; then          # uploaded through the browser
+    MID="$EXTRA"
+    ARCHIVE="$(find "$UPLOADROOT" -maxdepth 1 -type f \( -name "$MID.zip" -o -name "$MID.tar.gz" \) -print -quit 2>/dev/null)"
+  elif [[ "$EXTRA" =~ ^local:[A-Za-z0-9._-]{1,120}$ ]]; then   # file copied to the server folder (scp/SFTP)
+    MID="$(openssl rand -hex 16)"; KEEP_ARCHIVE=1
+    ARCHIVE="$INCOMING/${EXTRA#local:}"
+  else fail "invalid migration source"; fi
+  [ -n "${ARCHIVE:-}" ] && [ -f "$ARCHIVE" ] && [ ! -L "$ARCHIVE" ] || fail "archive not found"
+  [ -n "$DBROOT" ] && [ -n "$MYSQLBIN" ] || fail "database tools or root password not available"
+  need_dir
+  STG="$(mktemp -d "$UPLOADROOT/.stage.XXXXXX")" || fail "cannot create staging directory"
+  CANDIDATE="$HOMEDIR/.wpt-migrate-$MID"; PREVIOUS="$HOMEDIR/.wpt-previous-$MID"; DESTDIR="$DIR"
+  DBN=""; DBU=""; DB_CREATED=0; OLD_MOVED=0; NEW_INSTALLED=0; MIGRATION_OK=0
+  migration_cleanup(){
+    local rc=$?
+    if [ "$MIGRATION_OK" != 1 ]; then
+      if [ "$OLD_MOVED" = 1 ]; then
+        if [ "$NEW_INSTALLED" = 1 ] && [ -d "$DESTDIR" ]; then rm -rf -- "$DESTDIR"; fi
+        if [ -d "$PREVIOUS" ] && [ ! -e "$DESTDIR" ]; then mv -- "$PREVIOUS" "$DESTDIR" || echo "WARNING: automatic rollback failed; previous site remains at $PREVIOUS"; fi
+      fi
+      [ -d "$CANDIDATE" ] && rm -rf -- "$CANDIDATE"
+      if [ "$DB_CREATED" = 1 ]; then
+        printf '%s\n' "DROP DATABASE IF EXISTS \`$DBN\`; DROP USER IF EXISTS '$DBU'@'localhost'; FLUSH PRIVILEGES;" | "$MYSQLBIN" -uroot >/dev/null 2>&1 || echo "WARNING: failed to remove temporary database $DBN"
+      fi
+    fi
+    [ -d "$STG" ] && rm -rf -- "$STG"
+    if [ "$KEEP_ARCHIVE" = 0 ] && [ -f "$ARCHIVE" ]; then rm -f -- "$ARCHIVE"; fi
+    return "$rc"
+  }
+  trap migration_cleanup EXIT
+  echo "== 1/7 Unpacking and validating the archive =="
+  FOUND_OUTPUT="$(python3 -I "$PLUGIN_DIR/migrate_extract.py" "$ARCHIVE" "$STG/extracted" 2>&1)" || fail "archive validation failed: $FOUND_OUTPUT"
+  mapfile -t FOUND <<< "$FOUND_OUTPUT"
+  [ "${#FOUND[@]}" -ge 2 ] || fail "could not identify WordPress files and the SQL dump"
+  SRCWP="${FOUND[$((${#FOUND[@]}-2))]}"; SQLFILE="${FOUND[$((${#FOUND[@]}-1))]}"
+  [ -f "$SRCWP/wp-config.php" ] && [ -f "$SQLFILE" ] || fail "backup is incomplete"
+  [ ! -e "$CANDIDATE" ] && [ ! -e "$PREVIOUS" ] || fail "staging path already exists"
+  echo "WordPress files: $SRCWP"; echo "Database dump:   $SQLFILE ($(du -h "$SQLFILE" | cut -f1))"
+  if [ -f "$DIR/wp-config.php" ]; then echo "== Safety backup of the current destination site =="; do_backup; fi
+  DBTAG="${MID:0:16}"; DBN="wpt_${DBTAG}"; DBU="wpt_${DBTAG}"; DBPW="$(openssl rand -hex 24)"
+  echo "== 2/7 Creating a dedicated database =="
+  DB_CREATED=1
+  printf '%s\n' "CREATE DATABASE \`$DBN\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER '$DBU'@'localhost' IDENTIFIED BY '$DBPW'; GRANT ALL ON \`$DBN\`.* TO '$DBU'@'localhost'; FLUSH PRIVILEGES;" | "$MYSQLBIN" -uroot || fail "could not create the database"
+  echo "== 3/7 Importing the database =="
+  # drop CREATE DATABASE/USE lines and DEFINER clauses; map MySQL 8 collations that MariaDB does not know
+  sed -E -e '/^(CREATE DATABASE|USE) /d' -e 's/DEFINER=`[^`]*`@`[^`]*`//g' \
+         -e 's/utf8mb4_0900_ai_ci/utf8mb4_unicode_520_ci/g' -e 's/utf8mb4_0900_as_cs/utf8mb4_unicode_520_ci/g' "$SQLFILE" \
+    | MYSQL_PWD="$DBPW" "$MYSQLBIN" --default-character-set=utf8mb4 -u"$DBU" "$DBN" || fail "database import failed"
+  echo "== 4/7 Preparing the files (the live site is not touched yet) =="
+  mv -- "$SRCWP" "$CANDIDATE" || fail "could not stage the WordPress files"
+  find "$CANDIDATE" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.sql.gz' \) -delete     # never leave a DB dump in the web root
+  DIR="$CANDIDATE"
+  for kv in "DB_NAME=$DBN" "DB_USER=$DBU" "DB_PASSWORD=$DBPW" "DB_HOST=localhost"; do
+    "$PHPBIN" -d memory_limit=512M /usr/local/bin/wp --allow-root --path="$DIR" config set "${kv%%=*}" "${kv#*=}" --type=constant --skip-plugins --skip-themes >/dev/null 2>&1 || fail "could not update ${kv%%=*} in wp-config.php"
+  done
+  [ -f "$DIR/wp-content/object-cache.php" ] && mv -- "$DIR/wp-content/object-cache.php" "$DIR/wp-content/object-cache.php.source-server" && echo "Disabled the object-cache drop-in from the old server."
+  [ -f "$DIR/.htaccess" ] && mv -- "$DIR/.htaccess" "$DIR/.htaccess.source-server"
+  printf '%s\n' '# BEGIN WordPress' 'RewriteEngine On' 'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]' 'RewriteBase /' 'RewriteRule ^index\.php$ - [L]' 'RewriteCond %{REQUEST_FILENAME} !-f' 'RewriteCond %{REQUEST_FILENAME} !-d' 'RewriteRule . /index.php [L]' '# END WordPress' > "$DIR/.htaccess"
+  fix_perms
+  echo "== 5/7 Updating site addresses =="
+  OLDURL="$(wpd "$DIR" option get siteurl --skip-plugins --skip-themes 2>/dev/null | head -1)"
+  OLDHOME="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
+  [[ "$OLDURL" =~ ^https?:// ]] || fail "cannot read the site address from the imported database (check the SQL dump)"
+  SCHEME=http; CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+  if [ -s "$CERT" ] && openssl x509 -in "$CERT" -noout >/dev/null 2>&1; then SCHEME=https; fi
+  NEWURL="$SCHEME://$DOMAIN"
+  for old in "$OLDURL" "$OLDHOME"; do
+    [[ "$old" =~ ^https?:// ]] || continue
+    [ "$old" = "$NEWURL" ] && continue
+    wpd "$DIR" search-replace "$old" "$NEWURL" --all-tables --skip-columns=guid --skip-plugins --skip-themes 2>&1 | tail -2 || fail "search-replace failed"
+  done
+  wpd "$DIR" option update home "$NEWURL" --skip-plugins --skip-themes >/dev/null 2>&1 || fail "could not update the home address"
+  wpd "$DIR" option update siteurl "$NEWURL" --skip-plugins --skip-themes >/dev/null 2>&1 || fail "could not update the site address"
+  wpd "$DIR" db query "SELECT 1" --skip-plugins --skip-themes >/dev/null 2>&1 || fail "WordPress cannot reach the new database"
+  wpd "$DIR" rewrite flush --skip-plugins --skip-themes >/dev/null 2>&1 || true
+  fix_perms
+  echo "== 6/7 Switching the prepared site into place =="
+  mv -- "$DESTDIR" "$PREVIOUS" || fail "could not preserve the existing document root"
+  OLD_MOVED=1
+  mv -- "$CANDIDATE" "$DESTDIR" || fail "could not activate the migrated site; the previous site will be restored"
+  NEW_INSTALLED=1; DIR="$DESTDIR"
+  fix_perms; purge_cache
+  MIGRATION_OK=1
+  echo "== 7/7 Done =="
+  echo "Migrated to $NEWURL. The previous document root is kept at $PREVIOUS."
+  echo "Check the site before DNS: add '<this-server-ip> $DOMAIN' to your computer's hosts file."
+  echo "After DNS points here, issue SSL in CyberPanel and use 'Switch to https'."
+  ok ;;
+
 tidy)
   need_site
   [[ "$EXTRA" =~ ^(cache|db)$ ]] || fail "invalid option"
@@ -690,4 +783,5 @@ autocache)
     echo "$dom: $(grep -v -e '^__' -e '^ERROR' "$LOGDIR/job-speed-$dom.log" 2>/dev/null | tail -1)"
   done
   ok ;;
+
 esac
