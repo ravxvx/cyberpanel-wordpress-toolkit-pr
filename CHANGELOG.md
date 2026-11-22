@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.3.0
+- **Much faster site list.** The list no longer runs six WP-CLI commands per site one after another (one of them loaded every plugin, two asked wordpress.org for updates). It now reads the WordPress version from `version.php`, gets the address and language in one WP-CLI call without plugins, and checks all sites in parallel.
+- **Update counts load in the background** (parallel, without loading plugins, 2-minute timeout per command) and are cached for 6 hours; they are refreshed for a site after updates or plugin changes, and *Refresh list* checks everything again. Until they arrive the list shows "Checking updates...".
+- Server status and the Toolkit update check also run in the background and no longer block the buttons.
+
 ## 4.2.0
 - **Self-update from GitHub.** *Server & speed → Toolkit updates* shows the installed and the newest version with what is new, and **Update now** installs it: downloads the `main` branch of `ravxvx/cyberpanel-wordpress-toolkit-pr`, checks the files (Python and shell syntax, version), backs up the current version to `/root/wptoolkit-VERSION-DATE.tar.gz`, swaps the plugin folder in one step and restarts the panel. If any check fails nothing is changed. The hero shows an "Update to …" button when a newer version exists.
 - Includes 4.1.1 (Redis object cache health check with automatic rollback).

@@ -1,7 +1,7 @@
 #!/bin/bash
 # WordPress Toolkit Pro - management actions, runs as root (started by the panel).
 # Usage: wptool.sh ACTION DOMAIN|- EXTRA|- NONCE
-#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | migrate | speed | speedinfo | serverop | autocache | selfupdate
+#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | migrate | speed | speedinfo | serverop | autocache | selfupdate | updates
 set -uo pipefail
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
@@ -10,7 +10,7 @@ ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
 LOGDIR=/var/log/wptoolkit; BACKUPROOT=/home/wptoolkit-backups
 umask 077
 mkdir -p "$LOGDIR"; chmod 700 "$LOGDIR"
-[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|migrate|speed|speedinfo|serverop|autocache|selfupdate)$ ]] || exit 1
+[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|migrate|speed|speedinfo|serverop|autocache|selfupdate|updates)$ ]] || exit 1
 [[ "$NONCE" =~ ^[0-9a-f]{12}$ ]] || exit 1
 
 # one job of the same kind at a time (a duplicate start simply exits)
@@ -54,7 +54,8 @@ fix_perms(){
   chown "$SITEUSER:nogroup" "$DIR"
   chmod 750 "$DIR"
 }
-purge_cache(){ wpd "$DIR" litespeed-purge all --skip-themes >/dev/null 2>&1 || true; }
+UPDCACHE=/var/lib/wptoolkit/updates
+purge_cache(){ rm -f "$UPDCACHE/${DOMAIN:-none}"; wpd "$DIR" litespeed-purge all --skip-themes >/dev/null 2>&1 || true; }
 
 # ---------- speed helpers (Redis object cache, PHP version, LiteSpeed optimization) ----------
 DBMAP=/etc/wptoolkit/redis-db.conf
@@ -156,22 +157,55 @@ do_backup(){   # prints path of the new archive in BACKUP_FILE
 case "$ACTION" in
 
 list)
+  # fast: WordPress version from version.php, address and language in one WP-CLI call without plugins,
+  # all sites in parallel. Update counts come from the separate "updates" action.
+  TMPL="$(mktemp -d)"
   for cfg in /home/*/public_html/wp-config.php; do
     [ -e "$cfg" ] || continue
     dir="$(dirname "$cfg")"; dom="$(basename "$(dirname "$dir")")"
     [[ "$dom" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || continue
-    ver="$(wpd "$dir" core version --skip-plugins --skip-themes 2>/dev/null | head -1)"
-    core="$(wpd "$dir" core check-update --format=count --skip-plugins --skip-themes 2>/dev/null | tail -1)"
-    plug="$(wpd "$dir" plugin list --update=available --format=count --skip-themes 2>/dev/null | tail -1)"
-    thm="$(wpd "$dir" theme list --update=available --format=count --skip-plugins 2>/dev/null | tail -1)"
-    url="$(wpd "$dir" option get siteurl --skip-plugins --skip-themes 2>/dev/null | head -1)"
-    [[ "$core" =~ ^[0-9]+$ ]] || core="?"
-    [[ "$plug" =~ ^[0-9]+$ ]] || plug="?"
-    [[ "$thm" =~ ^[0-9]+$ ]] || thm="?"
-    lang="$(wpd "$dir" option get WPLANG --skip-plugins --skip-themes 2>/dev/null | head -1)"
-    [[ "$lang" =~ ^[a-z]{2,3}(_[A-Z]{2})?$ ]] || lang="en_US"
-    sv="$(site_lsphp "$dom")"
-    echo "SITE|$dom|${ver:-?}|$core|$plug|$thm|${url//|/}|$lang|${sv:+$(dotted "$sv")}"
+    (
+      ver="$(sed -n "s/.*\$wp_version *= *'\([^']*\)'.*/\1/p" "$dir/wp-includes/version.php" 2>/dev/null | head -1)"
+      info="$(timeout 40 "$PHPBIN" -d memory_limit=256M /usr/local/bin/wp --allow-root --path="$dir" --skip-plugins --skip-themes \
+        eval 'echo get_option("siteurl"), "|", get_option("WPLANG");' 2>/dev/null | tail -1)"
+      url="${info%%|*}"; lang="${info#*|}"
+      [[ "$url" =~ ^https?:// ]] || url=""
+      [[ "$lang" =~ ^[a-z]{2,3}(_[A-Z]{2})?$ ]] || lang="en_US"
+      sv="$(site_lsphp "$dom")"
+      c="$(cat "$UPDCACHE/$dom" 2>/dev/null)"; [[ "$c" =~ ^[0-9?]+\|[0-9?]+\|[0-9?]+$ ]] || c="-|-|-"
+      echo "SITE|$dom|${ver:-?}|$c|${url//|/}|$lang|${sv:+$(dotted "$sv")}" > "$TMPL/$dom"
+    ) &
+  done
+  wait
+  cat "$TMPL"/* 2>/dev/null | sort -t'|' -k2,2
+  rm -rf "$TMPL"
+  ok ;;
+
+updates)
+  # update counts per site (core / plugins / themes), in parallel, cached for 6 hours.
+  # EXTRA "cached" = reuse fresh cache entries, "fresh" = check everything again.
+  mode="${EXTRA:-cached}"; [[ "$mode" =~ ^(cached|fresh)$ ]] || fail "invalid option"
+  mkdir -p "$UPDCACHE"; chmod 700 "$UPDCACHE"
+  for cfg in /home/*/public_html/wp-config.php; do
+    [ -e "$cfg" ] || continue
+    dir="$(dirname "$cfg")"; dom="$(basename "$(dirname "$dir")")"
+    [[ "$dom" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || continue
+    f="$UPDCACHE/$dom"
+    if [ "$mode" = cached ] && [ -f "$f" ] && [ -z "$(find "$f" -mmin +360 2>/dev/null)" ]; then continue; fi
+    (
+      T(){ timeout 120 "$PHPBIN" -d memory_limit=512M /usr/local/bin/wp --allow-root --path="$dir" "$@" 2>/dev/null | tail -1; }
+      core="$(T core check-update --format=count --skip-plugins --skip-themes)"
+      plug="$(T plugin list --update=available --format=count --skip-plugins --skip-themes)"
+      thm="$(T theme list --update=available --format=count --skip-plugins --skip-themes)"
+      [[ "$core" =~ ^[0-9]+$ ]] || core="?"; [[ "$plug" =~ ^[0-9]+$ ]] || plug="?"; [[ "$thm" =~ ^[0-9]+$ ]] || thm="?"
+      echo "$core|$plug|$thm" > "$f.tmp" && mv "$f.tmp" "$f"
+    ) &
+  done
+  wait
+  for f in "$UPDCACHE"/*; do
+    [ -f "$f" ] || continue
+    dom="$(basename "$f")"; [ -f "/home/$dom/public_html/wp-config.php" ] || { rm -f "$f"; continue; }
+    echo "UPDS|$dom|$(cat "$f")"
   done
   ok ;;
 
