@@ -97,6 +97,22 @@ ocache_enable(){   # needs DIR DOMAIN; prints a reason and returns 1 when it can
   lso_set object-kind 1 && lso_set object-host localhost && lso_set object-port 6379 && lso_set object-db_id "$id" \
     && lso_set object-persistent true && lso_set object true || { echo "Could not change LiteSpeed Cache settings."; return 1; }
   purge_cache
+  # health check: if the site breaks with the object cache, switch it off again at once
+  local url code
+  url="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
+  sleep 2
+  code="$(http_code "$url/?wpt_check=$(openssl rand -hex 4)")"
+  echo "Health check: HTTP ${code:-000}"
+  if ! [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
+    rm -f "$DIR/wp-content/object-cache.php"
+    lso_set object false
+    purge_cache
+    echo "The site did not answer correctly with the Redis object cache - it was switched OFF again and the site is restored (HTTP $(http_code "$url/?wpt_check=$(openssl rand -hex 4)"))."
+    echo "Last errors:"
+    tail -n 6 "$DIR/wp-content/debug.log" 2>/dev/null | cut -c1-300
+    tail -n 6 "$HOMEDIR/logs/$DOMAIN.error_log" 2>/dev/null | cut -c1-300
+    return 1
+  fi
   echo "Redis object cache is ON (Redis database $id)."
 }
 speed_status(){
@@ -674,6 +690,7 @@ speed)
     redis-off)
       wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active"
       lso_set object false || fail "could not change the setting"
+      rm -f "$DIR/wp-content/object-cache.php"
       purge_cache; echo "Redis object cache is OFF." ;;
     opt-safe|opt-full|opt-off)
       wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active - turn on Redis cache (it installs it) or install the plugin first"

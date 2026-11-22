@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.1.1
+- **Safety for the Redis object cache:** after turning it on, the Toolkit loads the home page; if the site does not answer with 2xx/3xx, the object cache is switched off again at once (the `object-cache.php` drop-in is removed) and the last error lines are shown. This also applies to the nightly automatic cache.
+- "Turn off" also removes the `object-cache.php` drop-in, so LiteSpeed Cache cannot bring a broken one back.
+
 ## 4.1.0
 Built on the production 3.10.1 (migration, diagnostics, green design), which is now also the code on GitHub.
 
