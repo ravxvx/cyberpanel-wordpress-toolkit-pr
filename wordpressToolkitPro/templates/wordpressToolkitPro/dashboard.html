@@ -634,6 +634,9 @@
   /* one operation with busy state + status message; returns the job result or null */
   function op(action, dom, extra, opts) {
     opts = opts || {};
+    if (opts.bg) {   // background: no busy lock, no status message
+      return runJob(action, dom, extra, true).then(function (r) { if (opts.done) { opts.done(r); } return r; }).catch(function () { return null; });
+    }
     if (busy) { return Promise.resolve(null); }
     if (!confirmed(opts.confirm)) { return Promise.resolve(null); }
     setBusy(true); msg('info', (opts.label || action) + (dom ? ': ' + dom : '') + '...');
@@ -673,18 +676,37 @@
   function updBadges(s, box) {
     var any = false;
     [['Core', s.core], ['Plugins', s.plug], ['Themes', s.thm]].forEach(function (x) {
-      if (x[1] === '?') { box.appendChild(badge('gray', x[0] + ' ?')); any = true; }
+      if (x[1] === '-') { if (!any) { box.appendChild(badge('gray', 'Checking updates...')); } any = true; }
+      else if (x[1] === '?') { box.appendChild(badge('gray', x[0] + ' ?')); any = true; }
       else if (parseInt(x[1], 10) > 0) { box.appendChild(badge('warn', x[0] + ' ' + x[1])); any = true; }
     });
     if (!any) { box.appendChild(badge('ok', 'Up to date')); }
   }
   function renderSites(log) {
-    var tb = document.querySelector('#wptTable tbody'); tb.innerHTML = '';
-    var n = 0, updTotal = 0, noSsl = 0; SITES = {};
+    var old = SITES; SITES = {};
     lines(log, 'SITE').forEach(function (p) {
-      var dom = p[1]; n++;
-      var s = SITES[dom] = {dom: dom, ver: p[2], core: p[3], plug: p[4], thm: p[5], url: p[6], lang: p[7] || 'en_US', php: p[8] || '', ssl: !!(META[dom] || {}).ssl};
-      [p[3], p[4], p[5]].forEach(function (x) { if (/^\d+$/.test(x)) { updTotal += parseInt(x, 10); } });
+      var dom = p[1], o = old[dom] || {};
+      SITES[dom] = {dom: dom, ver: p[2], core: p[3] === '-' && o.core ? o.core : p[3], plug: p[4] === '-' && o.plug ? o.plug : p[4], thm: p[5] === '-' && o.thm ? o.thm : p[5],
+        url: p[6], lang: p[7] || 'en_US', php: p[8] || '', ssl: !!(META[dom] || {}).ssl};
+    });
+    drawSites();
+  }
+  function applyUpdates(log) {
+    lines(log, 'UPDS').forEach(function (p) { var s = SITES[p[1]]; if (s) { s.core = p[2]; s.plug = p[3]; s.thm = p[4]; } });
+    drawSites();
+  }
+  var UPDRUN = false;
+  function loadUpdates(mode) {
+    if (UPDRUN) { return Promise.resolve(); }
+    UPDRUN = true;
+    return op('updates', '', mode || 'cached', {bg: true, done: function (r) { if (r.success) { applyUpdates(r.log); } }}).then(function () { UPDRUN = false; });
+  }
+  function drawSites() {
+    var tb = document.querySelector('#wptTable tbody'); tb.innerHTML = '';
+    var n = 0, updTotal = 0, noSsl = 0;
+    Object.keys(SITES).sort().forEach(function (dom) {
+      var s = SITES[dom]; n++;
+      [s.core, s.plug, s.thm].forEach(function (x) { if (/^\d+$/.test(x || '')) { updTotal += parseInt(x, 10); } });
       var tr = el('tr', 'wpt-click'); tr.addEventListener('click', function () { openSite(dom); });
       var c = td(tr, '');
       c.appendChild(el('span', 'wpt-domain', dom));
@@ -699,13 +721,15 @@
       td(tr, act); tb.appendChild(tr);
     });
     if (!n) { tb.innerHTML = '<tr><td colspan="6" class="wpt-empty">No WordPress installation found.</td></tr>'; }
-    $('stSites').textContent = n; $('stUpd').textContent = updTotal; $('stSsl').textContent = noSsl;
+    $('stSites').textContent = n; $('stSsl').textContent = noSsl;
+    var pending = Object.keys(SITES).some(function (d) { return SITES[d].core === '-'; });
+    $('stUpd').textContent = pending && !updTotal ? '…' : updTotal;
     if (SITE && SITES[SITE]) { renderSiteHead(); }
   }
-  function loadList() {
+  function loadList(updMode) {
     if (busy) { return Promise.resolve(); }
-    setBusy(true); msg('info', 'Scanning sites...');
-    return runJob('list', '', '', true).then(function (r) { renderSites(r.log); msg('ok', 'Site list refreshed.'); })
+    setBusy(true); msg('info', 'Loading sites...');
+    return runJob('list', '', '', true).then(function (r) { renderSites(r.log); msg('ok', 'Sites loaded.'); loadUpdates(updMode || 'cached'); })
       .catch(function (e) { msg('bad', e.message); }).then(function () { setBusy(false); });
   }
 
@@ -1029,8 +1053,8 @@
 
   /* ---------- server & speed ---------- */
   function loadServer(silent) {
-    if (busy) { return Promise.resolve(); }
-    return op('speedinfo', '', '', {label: 'Server status', quiet: true, done: function (r) {
+    if (busy && !silent) { return Promise.resolve(); }
+    return op('speedinfo', '', '', {label: 'Server status', quiet: true, bg: !!silent, done: function (r) {
       SRV = {phps: [], sites: {}, loaded: true};
       var redis = lines(r.log, 'REDIS')[0] || [], sys = lines(r.log, 'SYS')[0] || [], auto = (lines(r.log, 'AUTO')[0] || [])[1];
       lines(r.log, 'SITEPHP').forEach(function (p) { (SRV.sites[p[2]] = SRV.sites[p[2]] || []).push(p[1]); if (SITES[p[1]] && p[2]) { SITES[p[1]].php = p[2]; } });
@@ -1066,7 +1090,7 @@
       });
       if (!SRV.phps.length) { tb.innerHTML = '<tr><td colspan="4" class="wpt-empty">No lsphp found.</td></tr>'; }
       var ab = $('svAutoBadge'); ab.innerHTML = ''; ab.appendChild(auto === 'on' ? badge('ok', 'On') : badge('gray', 'Off'));
-      msg('ok', silent ? 'Ready.' : 'Server status loaded.');
+      if (!silent) { msg('ok', 'Server status loaded.'); }
       if (SITE) { renderSiteHead(); }
     }});
   }
@@ -1101,7 +1125,7 @@
   });
 
   $('wptRefresh').addEventListener('click', function () {
-    loadList().then(function () { if (root.querySelector('[data-pane="server"].on')) { loadServer(); } });
+    loadList('fresh').then(function () { if (root.querySelector('[data-pane="server"].on')) { loadServer(); } });
   });
 
   // ---- migration: shared polling, upload and server-folder sources ----
@@ -1236,10 +1260,10 @@
     if (!quietUi) { msg(u[3] === 'yes' ? 'warn' : 'ok', u[3] === 'yes' ? 'Version ' + u[2] + ' is available.' : 'The Toolkit is up to date (' + u[1] + ').'); }
   }
   function checkUpdate(quietUi) {
-    if (busy) { return Promise.resolve(); }
-    return op('selfupdate', '', 'check', {label: 'Check for updates', quiet: true, noLog: !!quietUi, done: function (r) {
-      if (!r.success) { if (!quietUi) { show(r.log); msg('bad', 'Could not check for updates - see the log.'); } else { msg('ok', 'Ready.'); } return; }
-      renderUpd(r, quietUi); if (quietUi) { msg('ok', 'Ready.'); }
+    if (busy && !quietUi) { return Promise.resolve(); }
+    return op('selfupdate', '', 'check', {label: 'Check for updates', quiet: true, noLog: !!quietUi, bg: !!quietUi, done: function (r) {
+      if (!r.success) { if (!quietUi) { show(r.log); msg('bad', 'Could not check for updates - see the log.'); } return; }
+      renderUpd(r, quietUi);
     }});
   }
   $('svUpdCheck').addEventListener('click', function () { checkUpdate(false); });
@@ -1256,7 +1280,8 @@
   /* ---------- start ---------- */
   var h = location.hash.replace(/^#/, ''), hp = {};
   h.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) { hp[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); } else if (kv) { hp[kv] = true; } });
-  loadList().then(function () { return loadServer(true); }).then(function () { return checkUpdate(true); }).then(function () {
+  loadList().then(function () {
+    loadServer(true); checkUpdate(true);
     if (hp.site && SITES[hp.site]) { openSite(hp.site, hp.tab); }
     else if (hp.backups) { mainTab('backups'); } else if (hp.migrate) { mainTab('migrate'); } else if (hp.server) { mainTab('server'); } else if (hp.install) { mainTab('install'); }
   });
