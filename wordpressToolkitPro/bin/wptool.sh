@@ -1,15 +1,16 @@
 #!/bin/bash
 # WordPress Toolkit Pro - management actions, runs as root (started by the panel).
 # Usage: wptool.sh ACTION DOMAIN|- EXTRA|- NONCE
-#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy | speed | speedinfo | serverop | autocache
+#   ACTION: list | login | update | backup | backups | delbackup | restore | ssl | language | uninstall | errlog | debug | getsched | setsched | cron | plugins | pluginop | maint | verify | admins | resetpw | tidy
 set -uo pipefail
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ACTION="${1:-}"; DOMAIN="${2:--}"; EXTRA="${3:--}"; NONCE="${4:-}"
 [ "$DOMAIN" = "-" ] && DOMAIN=""
 [ "$EXTRA" = "-" ] && EXTRA=""
 LOGDIR=/var/log/wptoolkit; BACKUPROOT=/home/wptoolkit-backups
 umask 077
 mkdir -p "$LOGDIR"; chmod 700 "$LOGDIR"
-[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|speed|speedinfo|serverop|autocache)$ ]] || exit 1
+[[ "$ACTION" =~ ^(list|login|update|backup|backups|delbackup|restore|ssl|language|uninstall|errlog|debug|getsched|setsched|cron|plugins|pluginop|maint|verify|admins|resetpw|tidy|migrate)$ ]] || exit 1
 [[ "$NONCE" =~ ^[0-9a-f]{12}$ ]] || exit 1
 
 # one job of the same kind at a time (a duplicate start simply exits)
@@ -55,66 +56,6 @@ fix_perms(){
 }
 purge_cache(){ wpd "$DIR" litespeed-purge all --skip-themes >/dev/null 2>&1 || true; }
 
-
-# ---------- speed helpers (Redis object cache, PHP version, LiteSpeed optimization) ----------
-DBMAP=/etc/wptoolkit/redis-db.conf
-redis_up(){ command -v redis-cli >/dev/null 2>&1 && [ "$(redis-cli ping 2>/dev/null)" = "PONG" ]; }
-site_lsphp(){ grep -ho 'lsphp[0-9][0-9]*' "/usr/local/lsws/conf/vhosts/$1/vhost.conf" 2>/dev/null | head -1; }
-phpredis_ok(){ [ -x "/usr/local/lsws/$1/bin/php" ] && "/usr/local/lsws/$1/bin/php" -m 2>/dev/null | grep -qix redis; }
-dotted(){ local v="${1#lsphp}"; echo "${v:0:1}.${v:1}"; }   # lsphp82 -> 8.2
-restart_ls(){ systemctl restart lsws >/dev/null 2>&1 || /usr/local/lsws/bin/lswsctrl restart >/dev/null 2>&1; pkill -f lsphp >/dev/null 2>&1; sleep 3; }
-lso_get(){ wpd "$DIR" litespeed-option get "$1" --skip-themes 2>/dev/null | tail -1; }
-lso_set(){ wpd "$DIR" litespeed-option set "$1" "$2" --skip-themes >/dev/null 2>&1; }
-is_on(){ case "$1" in 1|true|on|yes) return 0;; *) return 1;; esac; }
-redis_db_for(){   # stable Redis database number (1-63) per domain
-  mkdir -p /etc/wptoolkit; chmod 700 /etc/wptoolkit; touch "$DBMAP"; chmod 600 "$DBMAP"
-  (
-    flock 6
-    id="$(awk -F'|' -v d="$1" '$1==d{print $2}' "$DBMAP" | head -1)"
-    if ! [[ "$id" =~ ^[0-9]+$ ]]; then
-      id=""
-      for i in $(seq 1 63); do
-        awk -F'|' -v i="$i" '$2==i{f=1} END{exit !f}' "$DBMAP" || { id="$i"; break; }
-      done
-      [ -n "$id" ] || exit 1
-      echo "$1|$id" >> "$DBMAP"
-    fi
-    echo "$id"
-  ) 6>/var/run/wptoolkit-redisdb.lock
-}
-http_code(){ curl -s -o /dev/null -w '%{http_code}' --max-time 30 -A 'Mozilla/5.0 (WPToolkit health check)' "$1" 2>/dev/null; }
-ocache_enable(){   # needs DIR DOMAIN; prints a reason and returns 1 when it cannot be done
-  redis_up || { echo "Redis is not running on this server - install it in \"Server & speed\" first."; return 1; }
-  local v; v="$(site_lsphp "$DOMAIN")"
-  if [ -n "$v" ] && ! phpredis_ok "$v"; then echo "PHP $(dotted "$v") of this site has no redis extension - install it in \"Server & speed\" first."; return 1; fi
-  if ! wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1; then
-    echo "Installing LiteSpeed Cache..."
-    wpd "$DIR" plugin install litespeed-cache --activate --skip-themes 2>&1 | tail -1
-    fix_perms
-    wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || { echo "LiteSpeed Cache could not be activated."; return 1; }
-  fi
-  local id; id="$(redis_db_for "$DOMAIN")" || { echo "No free Redis database left (1-63)."; return 1; }
-  lso_set object-kind 1 && lso_set object-host localhost && lso_set object-port 6379 && lso_set object-db_id "$id" \
-    && lso_set object-persistent true && lso_set object true || { echo "Could not change LiteSpeed Cache settings."; return 1; }
-  purge_cache
-  echo "Redis object cache is ON (Redis database $id)."
-}
-speed_status(){
-  local v ver oc db js css
-  v="$(site_lsphp "$DOMAIN")"; ver="${v:+$(dotted "$v")}"
-  if [ -n "$v" ] && phpredis_ok "$v"; then echo "SPEED|php|${ver:-?}|yes"; else echo "SPEED|php|${ver:-?}|no"; fi
-  if redis_up; then echo "SPEED|redis|running"; else echo "SPEED|redis|off"; fi
-  if wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1; then
-    echo "SPEED|lscache|active"
-    oc="$(lso_get object)"; db="$(lso_get object-db_id)"
-    if is_on "$oc"; then echo "SPEED|ocache|on|${db:-0}"; else echo "SPEED|ocache|off|-"; fi
-    js="$(lso_get optm-js_defer)"; css="$(lso_get optm-css_min)"
-    if [ "${js:-0}" != "0" ] && is_on "${js:-0}"; then echo "SPEED|opt|full"; elif is_on "${css:-0}"; then echo "SPEED|opt|safe"; else echo "SPEED|opt|off"; fi
-  else
-    echo "SPEED|lscache|missing"; echo "SPEED|ocache|off|-"; echo "SPEED|opt|off"
-  fi
-}
-
 do_backup(){   # prints path of the new archive in BACKUP_FILE
   [ -n "$DBROOT" ] && [ -n "$DUMPBIN" ] || fail "database tools or root password not available"
   mkdir -p "$BACKUPROOT/$DOMAIN"; chmod 700 "$BACKUPROOT" "$BACKUPROOT/$DOMAIN"
@@ -154,8 +95,7 @@ list)
     [[ "$thm" =~ ^[0-9]+$ ]] || thm="?"
     lang="$(wpd "$dir" option get WPLANG --skip-plugins --skip-themes 2>/dev/null | head -1)"
     [[ "$lang" =~ ^[a-z]{2,3}(_[A-Z]{2})?$ ]] || lang="en_US"
-    sv="$(site_lsphp "$dom")"
-    echo "SITE|$dom|${ver:-?}|$core|$plug|$thm|${url//|/}|$lang|${sv:+$(dotted "$sv")}"
+    echo "SITE|$dom|${ver:-?}|$core|$plug|$thm|${url//|/}|$lang"
   done
   ok ;;
 
@@ -412,6 +352,99 @@ resetpw)
   echo "Password changed and the user was logged out everywhere."
   ok ;;
 
+migrate)
+  [[ "$DOMAIN" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || fail "invalid destination domain"
+  UPLOADROOT=/home/wptoolkit-migrations; INCOMING="$UPLOADROOT/incoming"
+  KEEP_ARCHIVE=0
+  if [[ "$EXTRA" =~ ^[0-9a-f]{32}$ ]]; then          # uploaded through the browser
+    MID="$EXTRA"
+    ARCHIVE="$(find "$UPLOADROOT" -maxdepth 1 -type f \( -name "$MID.zip" -o -name "$MID.tar.gz" \) -print -quit 2>/dev/null)"
+  elif [[ "$EXTRA" =~ ^local:[A-Za-z0-9._-]{1,120}$ ]]; then   # file copied to the server folder (scp/SFTP)
+    MID="$(openssl rand -hex 16)"; KEEP_ARCHIVE=1
+    ARCHIVE="$INCOMING/${EXTRA#local:}"
+  else fail "invalid migration source"; fi
+  [ -n "${ARCHIVE:-}" ] && [ -f "$ARCHIVE" ] && [ ! -L "$ARCHIVE" ] || fail "archive not found"
+  [ -n "$DBROOT" ] && [ -n "$MYSQLBIN" ] || fail "database tools or root password not available"
+  need_dir
+  STG="$(mktemp -d "$UPLOADROOT/.stage.XXXXXX")" || fail "cannot create staging directory"
+  CANDIDATE="$HOMEDIR/.wpt-migrate-$MID"; PREVIOUS="$HOMEDIR/.wpt-previous-$MID"; DESTDIR="$DIR"
+  DBN=""; DBU=""; DB_CREATED=0; OLD_MOVED=0; NEW_INSTALLED=0; MIGRATION_OK=0
+  migration_cleanup(){
+    local rc=$?
+    if [ "$MIGRATION_OK" != 1 ]; then
+      if [ "$OLD_MOVED" = 1 ]; then
+        if [ "$NEW_INSTALLED" = 1 ] && [ -d "$DESTDIR" ]; then rm -rf -- "$DESTDIR"; fi
+        if [ -d "$PREVIOUS" ] && [ ! -e "$DESTDIR" ]; then mv -- "$PREVIOUS" "$DESTDIR" || echo "WARNING: automatic rollback failed; previous site remains at $PREVIOUS"; fi
+      fi
+      [ -d "$CANDIDATE" ] && rm -rf -- "$CANDIDATE"
+      if [ "$DB_CREATED" = 1 ]; then
+        printf '%s\n' "DROP DATABASE IF EXISTS \`$DBN\`; DROP USER IF EXISTS '$DBU'@'localhost'; FLUSH PRIVILEGES;" | "$MYSQLBIN" -uroot >/dev/null 2>&1 || echo "WARNING: failed to remove temporary database $DBN"
+      fi
+    fi
+    [ -d "$STG" ] && rm -rf -- "$STG"
+    if [ "$KEEP_ARCHIVE" = 0 ] && [ -f "$ARCHIVE" ]; then rm -f -- "$ARCHIVE"; fi
+    return "$rc"
+  }
+  trap migration_cleanup EXIT
+  echo "== 1/7 Unpacking and validating the archive =="
+  FOUND_OUTPUT="$(python3 -I "$PLUGIN_DIR/migrate_extract.py" "$ARCHIVE" "$STG/extracted" 2>&1)" || fail "archive validation failed: $FOUND_OUTPUT"
+  mapfile -t FOUND <<< "$FOUND_OUTPUT"
+  [ "${#FOUND[@]}" -ge 2 ] || fail "could not identify WordPress files and the SQL dump"
+  SRCWP="${FOUND[$((${#FOUND[@]}-2))]}"; SQLFILE="${FOUND[$((${#FOUND[@]}-1))]}"
+  [ -f "$SRCWP/wp-config.php" ] && [ -f "$SQLFILE" ] || fail "backup is incomplete"
+  [ ! -e "$CANDIDATE" ] && [ ! -e "$PREVIOUS" ] || fail "staging path already exists"
+  echo "WordPress files: $SRCWP"; echo "Database dump:   $SQLFILE ($(du -h "$SQLFILE" | cut -f1))"
+  if [ -f "$DIR/wp-config.php" ]; then echo "== Safety backup of the current destination site =="; do_backup; fi
+  DBTAG="${MID:0:16}"; DBN="wpt_${DBTAG}"; DBU="wpt_${DBTAG}"; DBPW="$(openssl rand -hex 24)"
+  echo "== 2/7 Creating a dedicated database =="
+  DB_CREATED=1
+  printf '%s\n' "CREATE DATABASE \`$DBN\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER '$DBU'@'localhost' IDENTIFIED BY '$DBPW'; GRANT ALL ON \`$DBN\`.* TO '$DBU'@'localhost'; FLUSH PRIVILEGES;" | "$MYSQLBIN" -uroot || fail "could not create the database"
+  echo "== 3/7 Importing the database =="
+  # drop CREATE DATABASE/USE lines and DEFINER clauses; map MySQL 8 collations that MariaDB does not know
+  sed -E -e '/^(CREATE DATABASE|USE) /d' -e 's/DEFINER=`[^`]*`@`[^`]*`//g' \
+         -e 's/utf8mb4_0900_ai_ci/utf8mb4_unicode_520_ci/g' -e 's/utf8mb4_0900_as_cs/utf8mb4_unicode_520_ci/g' "$SQLFILE" \
+    | MYSQL_PWD="$DBPW" "$MYSQLBIN" --default-character-set=utf8mb4 -u"$DBU" "$DBN" || fail "database import failed"
+  echo "== 4/7 Preparing the files (the live site is not touched yet) =="
+  mv -- "$SRCWP" "$CANDIDATE" || fail "could not stage the WordPress files"
+  find "$CANDIDATE" -maxdepth 1 -type f \( -name '*.sql' -o -name '*.sql.gz' \) -delete     # never leave a DB dump in the web root
+  DIR="$CANDIDATE"
+  for kv in "DB_NAME=$DBN" "DB_USER=$DBU" "DB_PASSWORD=$DBPW" "DB_HOST=localhost"; do
+    "$PHPBIN" -d memory_limit=512M /usr/local/bin/wp --allow-root --path="$DIR" config set "${kv%%=*}" "${kv#*=}" --type=constant --skip-plugins --skip-themes >/dev/null 2>&1 || fail "could not update ${kv%%=*} in wp-config.php"
+  done
+  [ -f "$DIR/wp-content/object-cache.php" ] && mv -- "$DIR/wp-content/object-cache.php" "$DIR/wp-content/object-cache.php.source-server" && echo "Disabled the object-cache drop-in from the old server."
+  [ -f "$DIR/.htaccess" ] && mv -- "$DIR/.htaccess" "$DIR/.htaccess.source-server"
+  printf '%s\n' '# BEGIN WordPress' 'RewriteEngine On' 'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]' 'RewriteBase /' 'RewriteRule ^index\.php$ - [L]' 'RewriteCond %{REQUEST_FILENAME} !-f' 'RewriteCond %{REQUEST_FILENAME} !-d' 'RewriteRule . /index.php [L]' '# END WordPress' > "$DIR/.htaccess"
+  fix_perms
+  echo "== 5/7 Updating site addresses =="
+  OLDURL="$(wpd "$DIR" option get siteurl --skip-plugins --skip-themes 2>/dev/null | head -1)"
+  OLDHOME="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
+  [[ "$OLDURL" =~ ^https?:// ]] || fail "cannot read the site address from the imported database (check the SQL dump)"
+  SCHEME=http; CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+  if [ -s "$CERT" ] && openssl x509 -in "$CERT" -noout >/dev/null 2>&1; then SCHEME=https; fi
+  NEWURL="$SCHEME://$DOMAIN"
+  for old in "$OLDURL" "$OLDHOME"; do
+    [[ "$old" =~ ^https?:// ]] || continue
+    [ "$old" = "$NEWURL" ] && continue
+    wpd "$DIR" search-replace "$old" "$NEWURL" --all-tables --skip-columns=guid --skip-plugins --skip-themes 2>&1 | tail -2 || fail "search-replace failed"
+  done
+  wpd "$DIR" option update home "$NEWURL" --skip-plugins --skip-themes >/dev/null 2>&1 || fail "could not update the home address"
+  wpd "$DIR" option update siteurl "$NEWURL" --skip-plugins --skip-themes >/dev/null 2>&1 || fail "could not update the site address"
+  wpd "$DIR" db query "SELECT 1" --skip-plugins --skip-themes >/dev/null 2>&1 || fail "WordPress cannot reach the new database"
+  wpd "$DIR" rewrite flush --skip-plugins --skip-themes >/dev/null 2>&1 || true
+  fix_perms
+  echo "== 6/7 Switching the prepared site into place =="
+  mv -- "$DESTDIR" "$PREVIOUS" || fail "could not preserve the existing document root"
+  OLD_MOVED=1
+  mv -- "$CANDIDATE" "$DESTDIR" || fail "could not activate the migrated site; the previous site will be restored"
+  NEW_INSTALLED=1; DIR="$DESTDIR"
+  fix_perms; purge_cache
+  MIGRATION_OK=1
+  echo "== 7/7 Done =="
+  echo "Migrated to $NEWURL. The previous document root is kept at $PREVIOUS."
+  echo "Check the site before DNS: add '<this-server-ip> $DOMAIN' to your computer's hosts file."
+  echo "After DNS points here, issue SSL in CyberPanel and use 'Switch to https'."
+  ok ;;
+
 tidy)
   need_site
   [[ "$EXTRA" =~ ^(cache|db)$ ]] || fail "invalid option"
@@ -557,137 +590,5 @@ uninstall)
   fix_perms
   echo "WordPress removed from $DOMAIN (the website itself stays in CyberPanel; public_html is empty)."
   echo "The last backup is in $BACKUPROOT/$DOMAIN/ - you can restore it from "Restore from backup"."
-  ok ;;
-speed)
-  need_site
-  [[ "$EXTRA" =~ ^(status|test|redis-on|redis-off|opt-safe|opt-full|opt-off|php-(74|80|81|82|83|84|85))$ ]] || fail "invalid option"
-  case "$EXTRA" in
-    status) speed_status ;;
-    test)
-      url="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
-      [[ "$url" =~ ^https?:// ]] || fail "cannot read the site address"
-      echo "Testing $url (3 requests each)..."
-      code="$(http_code "$url/")"; echo "TTFB|code|${code:-000}"
-      t(){ curl -s -o /dev/null -w '%{time_starttransfer}' --max-time 60 -A 'Mozilla/5.0 (WPToolkit speed test)' "$1" 2>/dev/null; }
-      t "$url/" >/dev/null   # warm the page cache
-      sum=0; for i in 1 2 3; do x="$(t "$url/")"; sum="$(awk -v a="$sum" -v b="${x:-0}" 'BEGIN{printf "%.3f", a+b}')"; done
-      cached="$(awk -v s="$sum" 'BEGIN{printf "%.2f", s/3}')"
-      sum=0; for i in 1 2 3; do x="$(t "$url/?wpt_nocache=$(openssl rand -hex 4)")"; sum="$(awk -v a="$sum" -v b="${x:-0}" 'BEGIN{printf "%.3f", a+b}')"; done
-      uncached="$(awk -v s="$sum" 'BEGIN{printf "%.2f", s/3}')"
-      echo "TTFB|cached|$cached"; echo "TTFB|uncached|$uncached"
-      echo "Server response time - from cache: ${cached}s, without cache (what logged-in users get): ${uncached}s."
-      ;;
-    redis-on) ocache_enable || fail "Redis object cache was not enabled." ;;
-    redis-off)
-      wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active"
-      lso_set object false || fail "could not change the setting"
-      purge_cache; echo "Redis object cache is OFF." ;;
-    opt-safe|opt-full|opt-off)
-      wpd "$DIR" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || fail "LiteSpeed Cache is not active - turn on Redis cache (it installs it) or install the plugin first"
-      on=true; defer=0
-      [ "$EXTRA" = opt-off ] && on=false
-      [ "$EXTRA" = opt-full ] && defer=1
-      lso_set optm-css_min "$on" && lso_set optm-js_min "$on" && lso_set optm-html_min "$on" && lso_set optm-js_defer "$defer" || fail "could not change the settings"
-      purge_cache
-      case "$EXTRA" in
-        opt-safe) echo "Optimization: SAFE (CSS, JS and HTML minified).";;
-        opt-full) echo "Optimization: FULL (minified + JavaScript deferred). Check the site - if menus, sliders or forms stop working, switch back to Safe.";;
-        opt-off)  echo "Optimization: OFF.";;
-      esac ;;
-    php-*)
-      new="lsphp${EXTRA#php-}"; old="$(site_lsphp "$DOMAIN")"
-      [ -x "/usr/local/lsws/$new/bin/php" ] || fail "PHP $(dotted "$new") is not installed on this server (install it in CyberPanel: Server > PHP > Install PHP)"
-      [ "$new" != "$old" ] || { echo "The site already uses PHP $(dotted "$new")."; ok; }
-      command -v cyberpanel >/dev/null 2>&1 || fail "cyberpanel command not found"
-      url="$(wpd "$DIR" option get home --skip-plugins --skip-themes 2>/dev/null | head -1)"
-      echo "Switching $DOMAIN from PHP ${old:+$(dotted "$old")} to PHP $(dotted "$new")..."
-      cyberpanel changePHP --domainName "$DOMAIN" --php "$(dotted "$new")" 2>&1 | tail -2
-      sleep 4
-      code="$(http_code "$url/")"
-      echo "Health check: HTTP $code"
-      if [[ "$code" =~ ^(2|3)[0-9][0-9]$ ]]; then
-        phpredis_ok "$new" || echo "Note: PHP $(dotted "$new") has no redis extension yet - install it in \"Server & speed\", otherwise the Redis object cache cannot work."
-        echo "RESULT|PHP|$(dotted "$new")"
-      else
-        if [ -n "$old" ]; then
-          echo "The site does not answer correctly on PHP $(dotted "$new") - switching back to PHP $(dotted "$old")."
-          cyberpanel changePHP --domainName "$DOMAIN" --php "$(dotted "$old")" 2>&1 | tail -1
-          sleep 3; echo "Health check after rollback: HTTP $(http_code "$url/")"
-        fi
-        fail "PHP change rolled back"
-      fi ;;
-  esac
-  ok ;;
-
-speedinfo)
-  if command -v redis-server >/dev/null 2>&1 || [ -f /etc/redis/redis.conf ]; then inst=yes; else inst=no; fi
-  if redis_up; then
-    used="$(redis-cli info memory 2>/dev/null | awk -F: '/^used_memory_human:/{gsub("\r","",$2);print $2}')"
-    maxm="$(redis-cli config get maxmemory 2>/dev/null | tail -1)"
-    echo "REDIS|$inst|yes|${used:-?}|$(( ${maxm:-0} / 1048576 ))"
-  else echo "REDIS|$inst|no|-|0"; fi
-  for d in /usr/local/lsws/lsphp[0-9]*; do
-    [ -x "$d/bin/php" ] || continue
-    v="$(basename "$d")"
-    if phpredis_ok "$v"; then echo "PHPV|$(dotted "$v")|${v#lsphp}|yes"; else echo "PHPV|$(dotted "$v")|${v#lsphp}|no"; fi
-  done
-  mt="$(awk '/^MemTotal:/{print int($2/1024)}' /proc/meminfo)"; ma="$(awk '/^MemAvailable:/{print int($2/1024)}' /proc/meminfo)"
-  echo "SYS|${mt:-0}|${ma:-0}|$(nproc 2>/dev/null || echo 1)|$(cut -d' ' -f1 /proc/loadavg)"
-  if [ -f /etc/cron.d/wptoolkit-autocache ]; then echo "AUTO|on"; else echo "AUTO|off"; fi
-  for cfg in /home/*/public_html/wp-config.php; do
-    [ -e "$cfg" ] || continue
-    dom="$(basename "$(dirname "$(dirname "$cfg")")")"
-    [[ "$dom" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || continue
-    v="$(site_lsphp "$dom")"; echo "SITEPHP|$dom|${v:+$(dotted "$v")}"
-  done
-  ok ;;
-
-serverop)
-  [[ "$EXTRA" =~ ^(redis-install|autocache-on|autocache-off|phpredis-(74|80|81|82|83|84|85))$ ]] || fail "invalid option"
-  case "$EXTRA" in
-    redis-install)
-      command -v apt-get >/dev/null 2>&1 || fail "only Ubuntu/Debian (apt) is supported"
-      echo "== Installing Redis =="
-      DEBIAN_FRONTEND=noninteractive apt-get install -y -q redis-server 2>&1 | tail -3
-      RC=/etc/redis/redis.conf
-      [ -f "$RC" ] || fail "Redis was not installed"
-      sed -i 's/^#\? *databases .*/databases 64/' "$RC"
-      grep -q '^maxmemory ' "$RC" || printf '\n# WordPress Toolkit Pro\nmaxmemory 256mb\nmaxmemory-policy allkeys-lru\n' >> "$RC"
-      systemctl enable redis-server >/dev/null 2>&1; systemctl restart redis-server
-      sleep 1; redis_up || fail "Redis does not answer after the installation"
-      echo "Redis is running (limit: $(redis-cli config get maxmemory | tail -1 | awk '{print int($1/1048576)}') MB of RAM, 64 databases)." ;;
-    phpredis-*)
-      v="lsphp${EXTRA#phpredis-}"
-      [ -x "/usr/local/lsws/$v/bin/php" ] || fail "PHP $(dotted "$v") is not installed"
-      if phpredis_ok "$v"; then echo "PHP $(dotted "$v") already has the redis extension."; ok; fi
-      echo "== Installing ${v}-redis =="
-      DEBIAN_FRONTEND=noninteractive apt-get install -y -q "${v}-redis" 2>&1 | tail -3
-      restart_ls
-      phpredis_ok "$v" || fail "the redis extension is still missing for PHP $(dotted "$v")"
-      echo "PHP $(dotted "$v") now has the redis extension (web server restarted)." ;;
-    autocache-on)
-      SELF="$(readlink -f "$0")"
-      printf '# WordPress Toolkit Pro - Redis object cache for new sites\nSHELL=/bin/bash\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n40 4 * * * root /bin/bash %s autocache - - 000000000000 >/dev/null 2>&1\n' "$SELF" > /etc/cron.d/wptoolkit-autocache
-      chmod 644 /etc/cron.d/wptoolkit-autocache
-      echo "Automatic cache is ON: every night at 04:40 the toolkit turns on the Redis object cache on sites that have LiteSpeed Cache but not the object cache yet." ;;
-    autocache-off)
-      rm -f /etc/cron.d/wptoolkit-autocache
-      echo "Automatic cache is OFF." ;;
-  esac
-  ok ;;
-
-autocache)
-  redis_up || { echo "Redis is not running - nothing to do."; ok; }
-  SELF="$(readlink -f "$0")"
-  for cfg in /home/*/public_html/wp-config.php; do
-    [ -e "$cfg" ] || continue
-    dir="$(dirname "$cfg")"; dom="$(basename "$(dirname "$dir")")"
-    [[ "$dom" =~ ^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])$ ]] || continue
-    wpd "$dir" plugin is-active litespeed-cache --skip-themes >/dev/null 2>&1 || { echo "$dom: no LiteSpeed Cache - skipped"; continue; }
-    oc="$(wpd "$dir" litespeed-option get object --skip-themes 2>/dev/null | tail -1)"
-    if is_on "$oc"; then echo "$dom: already on"; continue; fi
-    bash "$SELF" speed "$dom" redis-on "$(openssl rand -hex 6)"
-    echo "$dom: $(grep -v -e '^__' -e '^ERROR' "$LOGDIR/job-speed-$dom.log" 2>/dev/null | tail -1)"
-  done
   ok ;;
 esac
