@@ -179,6 +179,7 @@
       <div class="wpt-hero-actions">
         <button type="button" id="wptRefresh" class="wpt-btn ghost-light"><i class="fas fa-arrows-rotate"></i> Refresh list</button>
         <button type="button" class="wpt-btn ghost-light" data-jump="migrate"><i class="fas fa-right-left"></i> Move a site here</button>
+        <button type="button" class="wpt-btn ghost-light" data-jump="server" id="wptUpdHero" style="display:none;border-color:#3ddc97;color:#7ef0bd"><i class="fas fa-circle-arrow-up"></i> <span>Update available</span></button>
       </div>
     </div>
     <div class="wpt-stats">
@@ -465,6 +466,15 @@
         <div class="wpt-scroll"><table class="wpt-table" id="svPhp"><thead><tr><th>PHP</th><th>Redis extension</th><th>Sites using it</th><th></th></tr></thead><tbody></tbody></table></div>
         <div class="wpt-body wpt-help" style="margin:0">Each PHP version a site uses needs the redis extension for the object cache. Install more PHP versions in CyberPanel (Server &gt; PHP).</div>
       </div>
+      <div class="wpt-card" id="wptUpdCard">
+        <div class="wpt-title">Toolkit updates <span id="svUpdBadge"></span></div>
+        <div class="wpt-body">
+          <div class="wpt-info" id="svUpdInfo"><div><small>Installed</small><b id="svUpdCur">–</b></div><div><small>Newest on GitHub</small><b id="svUpdNew">–</b></div></div>
+          <div class="wpt-row" style="margin-top:12px"><button type="button" class="wpt-btn" id="svUpdCheck"><i class="fas fa-magnifying-glass"></i> Check for updates</button><button type="button" class="wpt-btn primary" id="svUpdApply" style="display:none"><i class="fas fa-download"></i> Update now</button></div>
+          <ul class="wpt-help" id="svUpdNotes" style="display:none;padding-left:18px"></ul>
+          <p class="wpt-help">Downloads the newest version from GitHub (<code>ravxvx/cyberpanel-wordpress-toolkit-pr</code>, branch <code>main</code>), checks it, backs up the current version to <code>/root/</code> and swaps the files. Your sites, backups and settings are not touched. The panel restarts for a few seconds.</p>
+        </div>
+      </div>
       <div class="wpt-card">
         <div class="wpt-title">Automatic cache for new sites <span id="svAutoBadge"></span></div>
         <div class="wpt-body">
@@ -629,7 +639,7 @@
     setBusy(true); msg('info', (opts.label || action) + (dom ? ': ' + dom : '') + '...');
     return runJob(action, dom, extra, opts.quiet).then(function (r) {
       if (opts.done) { opts.done(r); } else { msg(r.success ? 'ok' : 'bad', r.success ? (opts.label || action) + ' finished.' : (opts.label || action) + ' failed - see the log.'); }
-      if (!r.success && opts.quiet) { show(r.log); }
+      if (!r.success && opts.quiet && !opts.noLog) { show(r.log); }
       return r;
     }).catch(function (e) { msg('bad', e.message); return null; }).then(function (r) { setBusy(false); return r; });
   }
@@ -1207,10 +1217,46 @@
   }
 
 
+
+  /* ---------- toolkit self-update ---------- */
+  function renderUpd(r, quietUi) {
+    var u = lines(r.log, 'UPD')[0]; if (!u) { return; }
+    $('svUpdCur').textContent = u[1]; $('svUpdNew').textContent = u[2];
+    var b = $('svUpdBadge'); b.innerHTML = ''; b.appendChild(u[3] === 'yes' ? badge('warn', 'Update available') : badge('ok', 'Up to date'));
+    $('svUpdApply').style.display = u[3] === 'yes' ? 'inline-flex' : 'none';
+    var h = $('wptUpdHero'); h.style.display = u[3] === 'yes' ? 'inline-flex' : 'none'; h.querySelector('span').textContent = 'Update to ' + u[2];
+    var notes = $('svUpdNotes'); notes.innerHTML = '';
+    lines(r.log, 'CL').forEach(function (p) {
+      var raw = p.slice(1).join('|'), head = /^#/.test(raw), t = raw.replace(/^#+\s*/, '').replace(/^[-*]\s*/, '').replace(/\*\*/g, '').replace(/`/g, '');
+      if (!t.trim()) { return; }
+      var li = el('li', '', t); if (head) { li.style.listStyle = 'none'; li.style.marginLeft = '-18px'; li.style.fontWeight = '700'; li.style.color = 'var(--ink)'; li.style.marginTop = '8px'; }
+      notes.appendChild(li);
+    });
+    notes.style.display = notes.children.length ? 'block' : 'none';
+    if (!quietUi) { msg(u[3] === 'yes' ? 'warn' : 'ok', u[3] === 'yes' ? 'Version ' + u[2] + ' is available.' : 'The Toolkit is up to date (' + u[1] + ').'); }
+  }
+  function checkUpdate(quietUi) {
+    if (busy) { return Promise.resolve(); }
+    return op('selfupdate', '', 'check', {label: 'Check for updates', quiet: true, noLog: !!quietUi, done: function (r) {
+      if (!r.success) { if (!quietUi) { show(r.log); msg('bad', 'Could not check for updates - see the log.'); } else { msg('ok', 'Ready.'); } return; }
+      renderUpd(r, quietUi); if (quietUi) { msg('ok', 'Ready.'); }
+    }});
+  }
+  $('svUpdCheck').addEventListener('click', function () { checkUpdate(false); });
+  $('svUpdApply').addEventListener('click', function () {
+    if (busy || !window.confirm('Update WordPress Toolkit Pro to ' + $('svUpdNew').textContent + ' now? The current version is backed up first and the panel restarts for a few seconds.')) { return; }
+    setBusy(true); msg('info', 'Updating the Toolkit...');
+    var reload = function (text) { msg('info', text); setTimeout(function () { location.reload(); }, 9000); };
+    runJob('selfupdate', '', 'apply', false).then(function (r) {
+      if (r.success) { reload('Updated - the panel is restarting, the page reloads in a few seconds...'); }
+      else { setBusy(false); msg('bad', 'Update failed - nothing was changed. See the log.'); }
+    }).catch(function () { reload('The panel is restarting - the page reloads in a few seconds...'); });
+  });
+
   /* ---------- start ---------- */
   var h = location.hash.replace(/^#/, ''), hp = {};
   h.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) { hp[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); } else if (kv) { hp[kv] = true; } });
-  loadList().then(function () { return loadServer(true); }).then(function () {
+  loadList().then(function () { return loadServer(true); }).then(function () { return checkUpdate(true); }).then(function () {
     if (hp.site && SITES[hp.site]) { openSite(hp.site, hp.tab); }
     else if (hp.backups) { mainTab('backups'); } else if (hp.migrate) { mainTab('migrate'); } else if (hp.server) { mainTab('server'); } else if (hp.install) { mainTab('install'); }
   });

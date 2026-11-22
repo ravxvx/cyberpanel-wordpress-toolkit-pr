@@ -25,7 +25,7 @@ LOCALE_RE = re.compile(r"^[a-z]{2,3}(_[A-Z]{2})?$")
 NONCE_RE = re.compile(r"^[0-9a-f]{12}$")
 MIGRATION_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 FILE_RE = re.compile(r"^[a-z0-9.-]+-[0-9]{8}-[0-9]{6}\.tar\.gz$")
-ACTIONS = ("list", "login", "update", "backup", "backups", "delbackup", "restore", "ssl", "language", "uninstall", "errlog", "debug", "getsched", "setsched", "plugins", "pluginop", "maint", "verify", "admins", "resetpw", "tidy", "migrate", "speed", "speedinfo", "serverop")
+ACTIONS = ("list", "login", "update", "backup", "backups", "delbackup", "restore", "ssl", "language", "uninstall", "errlog", "debug", "getsched", "setsched", "plugins", "pluginop", "maint", "verify", "admins", "resetpw", "tidy", "migrate", "speed", "speedinfo", "serverop", "selfupdate")
 SCHED_RE = re.compile(r"^(off|daily|weekly):([2-9]|[1-5][0-9]|60)$")
 PLUGOP_RE = re.compile(r"^(plugin-activate|plugin-deactivate|plugin-update|theme-activate|theme-update|plugins-deactivate-all|plugins-restore):([A-Za-z0-9][A-Za-z0-9._-]{0,99}|-)$")
 MAINT_RE = re.compile(r"^(on|off|status)$")
@@ -34,7 +34,7 @@ UID_RE = re.compile(r"^[0-9]{1,9}$")
 LOGREQ_RE = re.compile(r"^(vhost|wp|php):(50|200|500)$")
 SPEED_RE = re.compile(r"^(status|test|redis-on|redis-off|opt-safe|opt-full|opt-off|php-(74|80|81|82|83|84|85))$")
 SERVEROP_RE = re.compile(r"^(redis-install|autocache-on|autocache-off|phpredis-(74|80|81|82|83|84|85))$")
-SERVER_ACTIONS = ("list", "getsched", "speedinfo", "serverop")
+SERVER_ACTIONS = ("list", "getsched", "speedinfo", "serverop", "selfupdate")
 LOCAL_RE = re.compile(r"^local:[A-Za-z0-9._-]{1,120}\.(zip|tar|tar\.gz|tgz)$")
 MIG_ROOT = "/home/wptoolkit-migrations"
 MIG_INCOMING = MIG_ROOT + "/incoming"
@@ -235,6 +235,9 @@ def job(request):
             return JsonResponse({"ok": False, "error": "Invalid option."})
     elif action == "serverop":
         if not SERVEROP_RE.match(extra):
+            return JsonResponse({"ok": False, "error": "Invalid option."})
+    elif action == "selfupdate":
+        if extra not in ("check", "apply"):
             return JsonResponse({"ok": False, "error": "Invalid option."})
     else:
         extra = ""

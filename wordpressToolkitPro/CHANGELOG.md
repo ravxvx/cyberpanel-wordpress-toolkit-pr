@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.2.0
+- **Self-update from GitHub.** *Server & speed → Toolkit updates* shows the installed and the newest version with what is new, and **Update now** installs it: downloads the `main` branch of `ravxvx/cyberpanel-wordpress-toolkit-pr`, checks the files (Python and shell syntax, version), backs up the current version to `/root/wptoolkit-VERSION-DATE.tar.gz`, swaps the plugin folder in one step and restarts the panel. If any check fails nothing is changed. The hero shows an "Update to …" button when a newer version exists.
+- Includes 4.1.1 (Redis object cache health check with automatic rollback).
+
 ## 4.1.1
 - **Safety for the Redis object cache:** after turning it on, the Toolkit loads the home page; if the site does not answer with 2xx/3xx, the object cache is switched off again at once (the `object-cache.php` drop-in is removed) and the last error lines are shown. This also applies to the nightly automatic cache.
 - "Turn off" also removes the `object-cache.php` drop-in, so LiteSpeed Cache cannot bring a broken one back.
